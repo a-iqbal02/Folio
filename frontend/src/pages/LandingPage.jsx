@@ -17,7 +17,7 @@ export default function LandingPage() {
       <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24">
         {/* Large logo mark */}
         <div className="mb-8 flex justify-center">
-          <FolioLogo size={72} showWordmark={true} showTagline={true} />
+          <FolioLogo size={96} showWordmark={true} showTagline={true} />
         </div>
 
         <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-6">
