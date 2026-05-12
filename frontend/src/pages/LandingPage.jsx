@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { Upload, PenSquare, ShieldCheck, BarChart3, TrendingUp, Layers } from 'lucide-react'
+import FolioLogo from '../components/layout/FolioLogo'
 
 const FEATURES = [
   { icon: ShieldCheck, title: 'Concentration Analysis', desc: 'HHI scoring, per-position warnings, and sector overlap detection.' },
-  { icon: BarChart3,   title: 'Benchmark Comparison', desc: 'See how your sector weights compare to the S&P 500.' },
-  { icon: TrendingUp,  title: 'Risk Scoring',          desc: 'Weighted-beta risk score calibrated to your actual holdings.' },
-  { icon: Layers,      title: 'ETF Insights',          desc: 'Detect redundant ETF overlap and consolidation opportunities.' },
+  { icon: BarChart3,   title: 'Benchmark Comparison',  desc: 'See how your sector weights compare to the S&P 500.' },
+  { icon: TrendingUp,  title: 'Risk Scoring',           desc: 'Weighted-beta risk score calibrated to your actual holdings.' },
+  { icon: Layers,      title: 'ETF Insights',           desc: 'Detect redundant ETF overlap and consolidation opportunities.' },
 ]
 
 export default function LandingPage() {
@@ -14,10 +15,16 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col">
       {/* Hero */}
       <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24">
+        {/* Large logo mark */}
+        <div className="mb-8 flex justify-center">
+          <FolioLogo size={72} showWordmark={true} showTagline={true} />
+        </div>
+
         <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-6">
           <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
           <span className="text-blue-400 text-xs font-semibold tracking-wide uppercase">Educational Analysis Tool</span>
         </div>
+
         <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight max-w-3xl">
           Understand what's inside<br />
           <span className="text-blue-400">your portfolio</span>
@@ -61,7 +68,7 @@ export default function LandingPage() {
       {/* Disclaimer */}
       <div className="border-t border-slate-800 px-6 py-4 text-center">
         <p className="text-slate-600 text-xs max-w-xl mx-auto">
-          PortfolioLens is an educational tool. Nothing displayed constitutes financial advice, a recommendation to buy or sell, or investment guidance. Always consult a licensed financial advisor.
+          Folio is an educational tool. Nothing displayed constitutes financial advice, a recommendation to buy or sell, or investment guidance. Always consult a licensed financial advisor.
         </p>
       </div>
     </div>

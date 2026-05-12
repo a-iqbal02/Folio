@@ -47,7 +47,7 @@ def generate_snapshot_pdf(analytics: dict, session_id: str, share_url: str | Non
     story = []
 
     # Header
-    story.append(Paragraph("PortfolioLens", styles["brand"]))
+    story.append(Paragraph("Folio", styles["brand"]))
     story.append(Paragraph("Portfolio Analysis Snapshot", styles["subtitle"]))
     story.append(Paragraph(
         f"Generated {datetime.now().strftime('%B %d, %Y')} · Session: {session_id[:8]}...",

@@ -2,10 +2,10 @@
 Validator & Enricher: validates tickers against yfinance and enriches each holding
 with sector, industry, asset class, beta, dividend yield, expense ratio, etc.
 
-ETF sector resolution order:
-  1. Curated static map (most reliable for known ETFs)
-  2. yfinance sector field (works for stocks, rarely for ETFs)
-  3. Name-based keyword inference (last resort)
+Beta resolution order:
+  1. Curated static beta map (reliable for known ETFs/stocks)
+  2. yfinance beta field
+  3. Asset-class fallback estimate
 """
 
 import asyncio
@@ -45,83 +45,106 @@ UNKNOWN_ENRICHMENT = {
 }
 
 # ---------------------------------------------------------------------------
-# Curated ETF metadata — sector, theme, and diversification tier
-# Covers the most common ETFs held by retail investors.
-# "broad_market" = True means this ETF is inherently diversified (suppress
-# single-position concentration warnings).
+# Curated ETF/stock metadata
 # ---------------------------------------------------------------------------
 ETF_METADATA: dict[str, dict] = {
     # Broad US Market
-    "SPY":   {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "name": "SPDR S&P 500 ETF Trust"},
-    "IVV":   {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "name": "iShares Core S&P 500 ETF"},
-    "VOO":   {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "name": "Vanguard S&P 500 ETF"},
-    "VTI":   {"sector": "Broad Market", "theme": "US Total Market",          "broad_market": True,  "name": "Vanguard Total Stock Market ETF"},
-    "ITOT":  {"sector": "Broad Market", "theme": "US Total Market",          "broad_market": True,  "name": "iShares Core S&P Total US Stock Market ETF"},
-    "SCHB":  {"sector": "Broad Market", "theme": "US Total Market",          "broad_market": True,  "name": "Schwab US Broad Market ETF"},
-    "SPLG":  {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "name": "SPDR Portfolio S&P 500 ETF"},
+    "SPY":   {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "beta": 1.00, "name": "SPDR S&P 500 ETF Trust"},
+    "IVV":   {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "beta": 1.00, "name": "iShares Core S&P 500 ETF"},
+    "VOO":   {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "beta": 1.00, "name": "Vanguard S&P 500 ETF"},
+    "VTI":   {"sector": "Broad Market", "theme": "US Total Market",          "broad_market": True,  "beta": 1.00, "name": "Vanguard Total Stock Market ETF"},
+    "ITOT":  {"sector": "Broad Market", "theme": "US Total Market",          "broad_market": True,  "beta": 1.00, "name": "iShares Core S&P Total US Stock Market ETF"},
+    "SCHB":  {"sector": "Broad Market", "theme": "US Total Market",          "broad_market": True,  "beta": 1.00, "name": "Schwab US Broad Market ETF"},
+    "SPLG":  {"sector": "Broad Market", "theme": "US Large Cap Blend",       "broad_market": True,  "beta": 1.00, "name": "SPDR Portfolio S&P 500 ETF"},
     # Growth / Nasdaq
-    "QQQ":   {"sector": "Technology",   "theme": "Nasdaq-100",               "broad_market": False, "name": "Invesco QQQ Trust"},
-    "QQQM":  {"sector": "Technology",   "theme": "Nasdaq-100",               "broad_market": False, "name": "Invesco Nasdaq 100 ETF"},
-    "VUG":   {"sector": "Broad Market", "theme": "US Large Cap Growth",      "broad_market": True,  "name": "Vanguard Growth ETF"},
-    "SCHG":  {"sector": "Broad Market", "theme": "US Large Cap Growth",      "broad_market": True,  "name": "Schwab US Large-Cap Growth ETF"},
-    "SPYG":  {"sector": "Broad Market", "theme": "S&P 500 Growth",           "broad_market": True,  "name": "SPDR Portfolio S&P 500 Growth ETF"},
-    "VOOG":  {"sector": "Broad Market", "theme": "S&P 500 Growth",           "broad_market": True,  "name": "Vanguard S&P 500 Growth ETF"},
+    "QQQ":   {"sector": "Technology",   "theme": "Nasdaq-100",               "broad_market": False, "beta": 1.15, "name": "Invesco QQQ Trust"},
+    "QQQM":  {"sector": "Technology",   "theme": "Nasdaq-100",               "broad_market": False, "beta": 1.15, "name": "Invesco Nasdaq 100 ETF"},
+    "VUG":   {"sector": "Broad Market", "theme": "US Large Cap Growth",      "broad_market": True,  "beta": 1.05, "name": "Vanguard Growth ETF"},
+    "SCHG":  {"sector": "Broad Market", "theme": "US Large Cap Growth",      "broad_market": True,  "beta": 1.05, "name": "Schwab US Large-Cap Growth ETF"},
+    "VOOG":  {"sector": "Broad Market", "theme": "S&P 500 Growth",           "broad_market": True,  "beta": 1.05, "name": "Vanguard S&P 500 Growth ETF"},
+    "SPYG":  {"sector": "Broad Market", "theme": "S&P 500 Growth",           "broad_market": True,  "beta": 1.05, "name": "SPDR Portfolio S&P 500 Growth ETF"},
     # Value
-    "VTV":   {"sector": "Broad Market", "theme": "US Large Cap Value",       "broad_market": True,  "name": "Vanguard Value ETF"},
-    "SCHV":  {"sector": "Broad Market", "theme": "US Large Cap Value",       "broad_market": True,  "name": "Schwab US Large-Cap Value ETF"},
-    "IVE":   {"sector": "Broad Market", "theme": "S&P 500 Value",            "broad_market": True,  "name": "iShares S&P 500 Value ETF"},
-    "SPYV":  {"sector": "Broad Market", "theme": "S&P 500 Value",            "broad_market": True,  "name": "SPDR Portfolio S&P 500 Value ETF"},
+    "VTV":   {"sector": "Broad Market", "theme": "US Large Cap Value",       "broad_market": True,  "beta": 0.90, "name": "Vanguard Value ETF"},
+    "SCHV":  {"sector": "Broad Market", "theme": "US Large Cap Value",       "broad_market": True,  "beta": 0.90, "name": "Schwab US Large-Cap Value ETF"},
+    "IVE":   {"sector": "Broad Market", "theme": "S&P 500 Value",            "broad_market": True,  "beta": 0.90, "name": "iShares S&P 500 Value ETF"},
+    "SPYV":  {"sector": "Broad Market", "theme": "S&P 500 Value",            "broad_market": True,  "beta": 0.90, "name": "SPDR Portfolio S&P 500 Value ETF"},
     # International
-    "VEA":   {"sector": "International","theme": "Developed Markets",        "broad_market": True,  "name": "Vanguard Developed Markets ETF"},
-    "VWO":   {"sector": "International","theme": "Emerging Markets",         "broad_market": True,  "name": "Vanguard Emerging Markets ETF"},
-    "IEMG":  {"sector": "International","theme": "Emerging Markets",         "broad_market": True,  "name": "iShares Core MSCI Emerging Markets ETF"},
-    "EFA":   {"sector": "International","theme": "EAFE Developed Markets",   "broad_market": True,  "name": "iShares MSCI EAFE ETF"},
-    "VT":    {"sector": "Broad Market", "theme": "Global Total Market",      "broad_market": True,  "name": "Vanguard Total World Stock ETF"},
-    "ACWI":  {"sector": "Broad Market", "theme": "Global Total Market",      "broad_market": True,  "name": "iShares MSCI ACWI ETF"},
-    "FEMR":  {"sector": "International","theme": "Emerging Markets",         "broad_market": True,  "name": "Fidelity Enhanced Emerging Markets ETF"},
-    "FENI":  {"sector": "International","theme": "International Developed",  "broad_market": True,  "name": "Fidelity Enhanced International ETF"},
+    "VEA":   {"sector": "International","theme": "Developed Markets",        "broad_market": True,  "beta": 0.85, "name": "Vanguard Developed Markets ETF"},
+    "VWO":   {"sector": "International","theme": "Emerging Markets",         "broad_market": True,  "beta": 0.85, "name": "Vanguard Emerging Markets ETF"},
+    "IEMG":  {"sector": "International","theme": "Emerging Markets",         "broad_market": True,  "beta": 0.85, "name": "iShares Core MSCI Emerging Markets ETF"},
+    "EFA":   {"sector": "International","theme": "EAFE Developed Markets",   "broad_market": True,  "beta": 0.85, "name": "iShares MSCI EAFE ETF"},
+    "VT":    {"sector": "Broad Market", "theme": "Global Total Market",      "broad_market": True,  "beta": 0.95, "name": "Vanguard Total World Stock ETF"},
+    "ACWI":  {"sector": "Broad Market", "theme": "Global Total Market",      "broad_market": True,  "beta": 0.95, "name": "iShares MSCI ACWI ETF"},
+    "FEMR":  {"sector": "International","theme": "Emerging Markets",         "broad_market": True,  "beta": 0.85, "name": "Fidelity Enhanced Emerging Markets ETF"},
+    "FENI":  {"sector": "International","theme": "International Developed",  "broad_market": True,  "beta": 0.85, "name": "Fidelity Enhanced International ETF"},
     # Sector ETFs
-    "XLK":   {"sector": "Technology",   "theme": "Tech Sector",              "broad_market": False, "name": "Technology Select Sector SPDR Fund"},
-    "VGT":   {"sector": "Technology",   "theme": "Tech Sector",              "broad_market": False, "name": "Vanguard Information Technology ETF"},
-    "SMH":   {"sector": "Technology",   "theme": "Semiconductors",           "broad_market": False, "name": "VanEck Semiconductor ETF"},
-    "SOXX":  {"sector": "Technology",   "theme": "Semiconductors",           "broad_market": False, "name": "iShares Semiconductor ETF"},
-    "DRAM":  {"sector": "Technology",   "theme": "Memory / Semiconductors",  "broad_market": False, "name": "Roundhill Memory ETF"},
-    "XLV":   {"sector": "Healthcare",   "theme": "Healthcare Sector",        "broad_market": False, "name": "Health Care Select Sector SPDR Fund"},
-    "VHT":   {"sector": "Healthcare",   "theme": "Healthcare Sector",        "broad_market": False, "name": "Vanguard Health Care ETF"},
-    "IBB":   {"sector": "Healthcare",   "theme": "Biotech",                  "broad_market": False, "name": "iShares Biotechnology ETF"},
-    "XLF":   {"sector": "Financials",   "theme": "Financials Sector",        "broad_market": False, "name": "Financial Select Sector SPDR Fund"},
-    "VFH":   {"sector": "Financials",   "theme": "Financials Sector",        "broad_market": False, "name": "Vanguard Financials ETF"},
-    "XLE":   {"sector": "Energy",       "theme": "Energy Sector",            "broad_market": False, "name": "Energy Select Sector SPDR Fund"},
-    "VDE":   {"sector": "Energy",       "theme": "Energy Sector",            "broad_market": False, "name": "Vanguard Energy ETF"},
-    "URA":   {"sector": "Energy",       "theme": "Uranium / Nuclear Energy", "broad_market": False, "name": "Global X Uranium ETF"},
-    "ICLN":  {"sector": "Energy",       "theme": "Clean Energy",             "broad_market": False, "name": "iShares Global Clean Energy ETF"},
-    "XLRE":  {"sector": "Real Estate",  "theme": "REITs",                    "broad_market": False, "name": "Real Estate Select Sector SPDR Fund"},
-    "VNQ":   {"sector": "Real Estate",  "theme": "REITs",                    "broad_market": False, "name": "Vanguard Real Estate ETF"},
-    "XLU":   {"sector": "Utilities",    "theme": "Utilities Sector",         "broad_market": False, "name": "Utilities Select Sector SPDR Fund"},
-    "XLB":   {"sector": "Materials",    "theme": "Materials Sector",         "broad_market": False, "name": "Materials Select Sector SPDR Fund"},
-    "XLI":   {"sector": "Industrials",  "theme": "Industrials Sector",       "broad_market": False, "name": "Industrial Select Sector SPDR Fund"},
-    "XLY":   {"sector": "Consumer Discretionary", "theme": "Consumer Disc.", "broad_market": False, "name": "Consumer Discret Select Sector SPDR"},
-    "XLP":   {"sector": "Consumer Staples", "theme": "Consumer Staples",     "broad_market": False, "name": "Consumer Staples Select Sector SPDR"},
-    "XLC":   {"sector": "Communication Services", "theme": "Comm. Services", "broad_market": False, "name": "Communication Services Select Sector SPDR"},
+    "XLK":   {"sector": "Technology",   "theme": "Tech Sector",              "broad_market": False, "beta": 1.20, "name": "Technology Select Sector SPDR Fund"},
+    "VGT":   {"sector": "Technology",   "theme": "Tech Sector",              "broad_market": False, "beta": 1.20, "name": "Vanguard Information Technology ETF"},
+    "SMH":   {"sector": "Technology",   "theme": "Semiconductors",           "broad_market": False, "beta": 1.45, "name": "VanEck Semiconductor ETF"},
+    "SOXX":  {"sector": "Technology",   "theme": "Semiconductors",           "broad_market": False, "beta": 1.45, "name": "iShares Semiconductor ETF"},
+    "DRAM":  {"sector": "Technology",   "theme": "Memory / Semiconductors",  "broad_market": False, "beta": 1.50, "name": "Roundhill Memory ETF"},
+    "XLV":   {"sector": "Healthcare",   "theme": "Healthcare Sector",        "broad_market": False, "beta": 0.70, "name": "Health Care Select Sector SPDR Fund"},
+    "VHT":   {"sector": "Healthcare",   "theme": "Healthcare Sector",        "broad_market": False, "beta": 0.70, "name": "Vanguard Health Care ETF"},
+    "IBB":   {"sector": "Healthcare",   "theme": "Biotech",                  "broad_market": False, "beta": 0.90, "name": "iShares Biotechnology ETF"},
+    "XLF":   {"sector": "Financials",   "theme": "Financials Sector",        "broad_market": False, "beta": 1.10, "name": "Financial Select Sector SPDR Fund"},
+    "VFH":   {"sector": "Financials",   "theme": "Financials Sector",        "broad_market": False, "beta": 1.10, "name": "Vanguard Financials ETF"},
+    "XLE":   {"sector": "Energy",       "theme": "Energy Sector",            "broad_market": False, "beta": 1.05, "name": "Energy Select Sector SPDR Fund"},
+    "VDE":   {"sector": "Energy",       "theme": "Energy Sector",            "broad_market": False, "beta": 1.05, "name": "Vanguard Energy ETF"},
+    "URA":   {"sector": "Energy",       "theme": "Uranium / Nuclear Energy", "broad_market": False, "beta": 1.30, "name": "Global X Uranium ETF"},
+    "ICLN":  {"sector": "Energy",       "theme": "Clean Energy",             "broad_market": False, "beta": 1.10, "name": "iShares Global Clean Energy ETF"},
+    "XLRE":  {"sector": "Real Estate",  "theme": "REITs",                    "broad_market": False, "beta": 0.80, "name": "Real Estate Select Sector SPDR Fund"},
+    "VNQ":   {"sector": "Real Estate",  "theme": "REITs",                    "broad_market": False, "beta": 0.80, "name": "Vanguard Real Estate ETF"},
+    "XLU":   {"sector": "Utilities",    "theme": "Utilities Sector",         "broad_market": False, "beta": 0.55, "name": "Utilities Select Sector SPDR Fund"},
+    "XLB":   {"sector": "Materials",    "theme": "Materials Sector",         "broad_market": False, "beta": 1.05, "name": "Materials Select Sector SPDR Fund"},
+    "XLI":   {"sector": "Industrials",  "theme": "Industrials Sector",       "broad_market": False, "beta": 1.05, "name": "Industrial Select Sector SPDR Fund"},
+    "XLY":   {"sector": "Consumer Discretionary", "theme": "Consumer Disc.", "broad_market": False, "beta": 1.15, "name": "Consumer Discret Select Sector SPDR"},
+    "XLP":   {"sector": "Consumer Staples", "theme": "Consumer Staples",     "broad_market": False, "beta": 0.60, "name": "Consumer Staples Select Sector SPDR"},
+    "XLC":   {"sector": "Communication Services", "theme": "Comm. Services", "broad_market": False, "beta": 1.05, "name": "Communication Services Select Sector SPDR"},
     # Thematic
-    "AIS":   {"sector": "Technology",   "theme": "Artificial Intelligence",  "broad_market": False, "name": "VictoryShares AI & Tech ETF"},
-    "BOTZ":  {"sector": "Technology",   "theme": "Robotics & AI",            "broad_market": False, "name": "Global X Robotics & AI ETF"},
-    "AIQ":   {"sector": "Technology",   "theme": "Artificial Intelligence",  "broad_market": False, "name": "Global X Artificial Intelligence ETF"},
-    "ARKK":  {"sector": "Technology",   "theme": "Disruptive Innovation",    "broad_market": False, "name": "ARK Innovation ETF"},
-    "DRIV":  {"sector": "Consumer Discretionary", "theme": "EV / Autonomous","broad_market": False, "name": "Global X Autonomous & EV ETF"},
+    "AIS":   {"sector": "Technology",   "theme": "Artificial Intelligence",  "broad_market": False, "beta": 1.25, "name": "VictoryShares AI & Tech ETF"},
+    "BOTZ":  {"sector": "Technology",   "theme": "Robotics & AI",            "broad_market": False, "beta": 1.30, "name": "Global X Robotics & AI ETF"},
+    "AIQ":   {"sector": "Technology",   "theme": "Artificial Intelligence",  "broad_market": False, "beta": 1.25, "name": "Global X Artificial Intelligence ETF"},
+    "ARKK":  {"sector": "Technology",   "theme": "Disruptive Innovation",    "broad_market": False, "beta": 1.60, "name": "ARK Innovation ETF"},
+    "DRIV":  {"sector": "Consumer Discretionary", "theme": "EV / Autonomous","broad_market": False, "beta": 1.20, "name": "Global X Autonomous & EV ETF"},
+    "CIBR":  {"sector": "Technology",   "theme": "Cybersecurity",            "broad_market": False, "beta": 1.10, "name": "First Trust NASDAQ Cybersecurity ETF"},
+    "HACK":  {"sector": "Technology",   "theme": "Cybersecurity",            "broad_market": False, "beta": 1.10, "name": "ETFMG Prime Cyber Security ETF"},
+    "CLOU":  {"sector": "Technology",   "theme": "Cloud Computing",          "broad_market": False, "beta": 1.20, "name": "Global X Cloud Computing ETF"},
+    "SKYY":  {"sector": "Technology",   "theme": "Cloud Computing",          "broad_market": False, "beta": 1.20, "name": "First Trust Cloud Computing ETF"},
+    "UFO":   {"sector": "Industrials",  "theme": "Space",                    "broad_market": False, "beta": 1.15, "name": "Procure Space ETF"},
+    "ARKX":  {"sector": "Industrials",  "theme": "Space Exploration",        "broad_market": False, "beta": 1.20, "name": "ARK Space Exploration ETF"},
+    "LIT":   {"sector": "Materials",    "theme": "Lithium & Batteries",      "broad_market": False, "beta": 1.25, "name": "Global X Lithium & Battery Tech ETF"},
+    "TAN":   {"sector": "Energy",       "theme": "Solar Energy",             "broad_market": False, "beta": 1.15, "name": "Invesco Solar ETF"},
     # Dividend / Income
-    "SCHD":  {"sector": "Broad Market", "theme": "Dividend Income",          "broad_market": True,  "name": "Schwab US Dividend Equity ETF"},
-    "VYM":   {"sector": "Broad Market", "theme": "High Dividend Yield",      "broad_market": True,  "name": "Vanguard High Dividend Yield ETF"},
-    "JEPI":  {"sector": "Broad Market", "theme": "Equity Premium Income",    "broad_market": True,  "name": "JPMorgan Equity Premium Income ETF"},
-    "DVY":   {"sector": "Broad Market", "theme": "Select Dividend",          "broad_market": True,  "name": "iShares Select Dividend ETF"},
+    "SCHD":  {"sector": "Broad Market", "theme": "Dividend Income",          "broad_market": True,  "beta": 0.75, "name": "Schwab US Dividend Equity ETF"},
+    "VYM":   {"sector": "Broad Market", "theme": "High Dividend Yield",      "broad_market": True,  "beta": 0.75, "name": "Vanguard High Dividend Yield ETF"},
+    "JEPI":  {"sector": "Broad Market", "theme": "Equity Premium Income",    "broad_market": True,  "beta": 0.50, "name": "JPMorgan Equity Premium Income ETF"},
+    "JEPQ":  {"sector": "Broad Market", "theme": "Equity Premium Income",    "broad_market": True,  "beta": 0.55, "name": "JPMorgan Nasdaq Equity Premium Income ETF"},
+    "DVY":   {"sector": "Broad Market", "theme": "Select Dividend",          "broad_market": True,  "beta": 0.75, "name": "iShares Select Dividend ETF"},
+    "HDV":   {"sector": "Broad Market", "theme": "High Dividend",            "broad_market": True,  "beta": 0.65, "name": "iShares Core High Dividend ETF"},
     # Low Vol
-    "USMV":  {"sector": "Broad Market", "theme": "Min Volatility",           "broad_market": True,  "name": "iShares MSCI USA Min Vol Factor ETF"},
-    "SPLV":  {"sector": "Broad Market", "theme": "Low Volatility",           "broad_market": True,  "name": "Invesco S&P 500 Low Volatility ETF"},
+    "USMV":  {"sector": "Broad Market", "theme": "Min Volatility",           "broad_market": True,  "beta": 0.65, "name": "iShares MSCI USA Min Vol Factor ETF"},
+    "SPLV":  {"sector": "Broad Market", "theme": "Low Volatility",           "broad_market": True,  "beta": 0.65, "name": "Invesco S&P 500 Low Volatility ETF"},
     # Bonds
-    "AGG":   {"sector": "Fixed Income", "theme": "US Aggregate Bonds",       "broad_market": True,  "name": "iShares Core US Aggregate Bond ETF"},
-    "BND":   {"sector": "Fixed Income", "theme": "US Total Bond Market",     "broad_market": True,  "name": "Vanguard Total Bond Market ETF"},
-    "TLT":   {"sector": "Fixed Income", "theme": "Long-Term Treasuries",     "broad_market": False, "name": "iShares 20+ Year Treasury Bond ETF"},
-    "SHY":   {"sector": "Fixed Income", "theme": "Short-Term Treasuries",    "broad_market": True,  "name": "iShares 1-3 Year Treasury Bond ETF"},
+    "AGG":   {"sector": "Fixed Income", "theme": "US Aggregate Bonds",       "broad_market": True,  "beta": 0.05, "name": "iShares Core US Aggregate Bond ETF"},
+    "BND":   {"sector": "Fixed Income", "theme": "US Total Bond Market",     "broad_market": True,  "beta": 0.05, "name": "Vanguard Total Bond Market ETF"},
+    "TLT":   {"sector": "Fixed Income", "theme": "Long-Term Treasuries",     "broad_market": False, "beta": -0.10,"name": "iShares 20+ Year Treasury Bond ETF"},
+    "SHY":   {"sector": "Fixed Income", "theme": "Short-Term Treasuries",    "broad_market": True,  "beta": 0.02, "name": "iShares 1-3 Year Treasury Bond ETF"},
+    "HYG":   {"sector": "Fixed Income", "theme": "High Yield Bonds",         "broad_market": False, "beta": 0.35, "name": "iShares iBoxx High Yield Corporate Bond ETF"},
+    # Asian Markets
+    "MCHI":  {"sector": "International","theme": "China",                    "broad_market": False, "beta": 0.80, "name": "iShares MSCI China ETF"},
+    "KWEB":  {"sector": "International","theme": "China Internet",           "broad_market": False, "beta": 0.90, "name": "KraneShares CSI China Internet ETF"},
+    "INDA":  {"sector": "International","theme": "India",                    "broad_market": False, "beta": 0.80, "name": "iShares MSCI India ETF"},
+    "EWJ":   {"sector": "International","theme": "Japan",                    "broad_market": False, "beta": 0.75, "name": "iShares MSCI Japan ETF"},
+}
+
+# Asset-class fallback betas when ticker not in static map and yfinance returns nothing
+ASSET_CLASS_BETA_FALLBACK = {
+    "ETF":         1.00,
+    "Stock":       1.10,
+    "Mutual Fund": 0.95,
+    "Fixed Income":0.05,
+    "Crypto":      2.00,
+    "Unknown":     1.00,
 }
 
 
@@ -132,7 +155,6 @@ async def validate_and_enrich(df: pd.DataFrame) -> pd.DataFrame:
     for field in UNKNOWN_ENRICHMENT:
         df[field] = df["ticker"].map(lambda t: enrichments.get(t, UNKNOWN_ENRICHMENT)[field])
 
-    # Add broad_market flag — used by concentration warnings
     df["broad_market"] = df["ticker"].map(
         lambda t: ETF_METADATA.get(t, {}).get("broad_market", False)
     )
@@ -149,6 +171,15 @@ async def validate_and_enrich(df: pd.DataFrame) -> pd.DataFrame:
         )
     else:
         df["name"] = df["ticker"].map(lambda t: enrichments.get(t, UNKNOWN_ENRICHMENT)["name"])
+
+    # Apply asset-class beta fallback for any holding still missing beta
+    def _fill_beta(row):
+        if row.get("beta") is not None:
+            return row["beta"]
+        asset_class = row.get("asset_class", "Unknown") or "Unknown"
+        return ASSET_CLASS_BETA_FALLBACK.get(asset_class, 1.00)
+
+    df["beta"] = df.apply(_fill_beta, axis=1)
 
     return df
 
@@ -182,7 +213,6 @@ async def _fetch_all(tickers: list[str]) -> dict[str, dict]:
 
 
 def _from_static(ticker: str) -> dict:
-    """Return enrichment from the curated static map when yfinance fails."""
     static = ETF_METADATA.get(ticker)
     if static:
         return {
@@ -191,16 +221,14 @@ def _from_static(ticker: str) -> dict:
             "asset_class": "ETF",
             "sector": static.get("sector", "Unknown"),
             "industry": static.get("theme", "Unknown"),
+            "beta": static.get("beta"),
             "valid": True,
         }
     return {**UNKNOWN_ENRICHMENT}
 
 
 def _fetch_ticker_sync(ticker: str) -> dict:
-    """Synchronous yfinance fetch — run in executor. Static map takes priority for ETFs."""
-    # Check static map first — more reliable for ETF metadata
     static = ETF_METADATA.get(ticker)
-
     try:
         info = yf.Ticker(ticker).info
         if not info or len(info) < 5:
@@ -208,13 +236,12 @@ def _fetch_ticker_sync(ticker: str) -> dict:
 
         quote_type = info.get("quoteType", "")
         asset_class = QUOTE_TYPE_MAP.get(quote_type, quote_type or "Unknown")
-
         expense_ratio = (
             info.get("annualReportExpenseRatio")
             or info.get("fundOperatingExpenseRatio")
         )
 
-        # Sector resolution: static map → yfinance → name inference
+        # Sector: static → yfinance → name inference
         if static and static.get("sector") and static["sector"] != "Unknown":
             sector = static["sector"]
         elif info.get("sector"):
@@ -224,7 +251,6 @@ def _fetch_ticker_sync(ticker: str) -> dict:
                 info.get("longName", "") or info.get("shortName", "")
             ) or "Unknown"
 
-        # Industry: use ETF theme from static map if available
         industry = (
             (static.get("theme") if static else None)
             or info.get("industry")
@@ -238,12 +264,19 @@ def _fetch_ticker_sync(ticker: str) -> dict:
             or None
         )
 
+        # Beta: static map → yfinance → None (fallback applied later)
+        beta = None
+        if static and static.get("beta") is not None:
+            beta = static["beta"]
+        elif info.get("beta") is not None:
+            beta = float(info["beta"])
+
         return {
             "name": name,
             "asset_class": asset_class,
             "sector": sector,
             "industry": industry,
-            "beta": info.get("beta") or None,
+            "beta": beta,
             "dividend_yield": info.get("dividendYield") or None,
             "expense_ratio": expense_ratio,
             "current_price": info.get("currentPrice") or info.get("regularMarketPrice") or None,

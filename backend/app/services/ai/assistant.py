@@ -18,7 +18,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """You are PortfolioLens Assistant, an educational portfolio analysis tool.
+SYSTEM_PROMPT = """You are Folio Assistant, an educational portfolio analysis tool.
 
 You have access to the user's portfolio analytics below. Your job is to explain what the numbers mean, highlight observations, and answer questions about their specific holdings.
 

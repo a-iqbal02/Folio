@@ -1,7 +1,8 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { BarChart3, Upload, PenSquare, Home, Clock, X, DollarSign, TrendingUp } from 'lucide-react'
+import { Upload, PenSquare, Home, Clock, X, DollarSign, TrendingUp } from 'lucide-react'
 import clsx from 'clsx'
 import { useSavedSessions } from '../../hooks/useSession'
+import FolioLogo from './FolioLogo'
 
 const NAV = [
   { to: '/',             label: 'Home',         icon: Home },
@@ -22,14 +23,12 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen">
       <aside className="hidden md:flex flex-col w-60 bg-slate-900 border-r border-slate-800 shrink-0">
-        <div className="px-5 py-6 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="text-blue-500 w-5 h-5" />
-            <span className="font-bold text-white text-lg tracking-tight">PortfolioLens</span>
-          </div>
-          <p className="text-slate-500 text-xs mt-1">Portfolio Analysis</p>
+        {/* Logo */}
+        <div className="px-5 py-5 border-b border-slate-800">
+          <FolioLogo size={36} showWordmark={true} showTagline={false} />
         </div>
 
+        {/* Nav */}
         <nav className="px-3 py-4 space-y-1 border-b border-slate-800">
           {NAV.map(({ to, label, icon: Icon }) => (
             <NavLink
@@ -54,6 +53,7 @@ export default function Layout() {
           ))}
         </nav>
 
+        {/* Recent sessions */}
         {sessions.length > 0 && (
           <div className="px-3 py-4 flex-1 overflow-y-auto">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-600 px-2 mb-2 flex items-center gap-1.5">
@@ -92,10 +92,7 @@ export default function Layout() {
 
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="text-blue-500 w-5 h-5" />
-          <span className="font-bold text-white text-base">PortfolioLens</span>
-        </div>
+        <FolioLogo size={32} showWordmark={true} showTagline={false} />
         <div className="flex gap-3">
           {NAV.map(({ to, icon: Icon }) => (
             <NavLink
