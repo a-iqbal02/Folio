@@ -15,7 +15,7 @@ When you buy one share of SPY (the S&P 500 ETF), you're instantly buying a tiny 
 ETFs are priced and traded throughout the day (unlike mutual funds, which price once at market close). They typically have very low expense ratios — some as low as 0.03% per year — because most are "passively managed," meaning a computer tracks an index rather than a human picking stocks.`,
     example: {
       title: 'Real Example: VTI',
-      body: 'One share of VTI (~$265) gives you ownership in 3,800+ US companies — Apple, Microsoft, ExxonMobil, small regional banks, and everything in between. Expense ratio: 0.03%/year. That's $0.30/year on $1,000 invested.',
+      body: "One share of VTI (~$265) gives you ownership in 3,800+ US companies — Apple, Microsoft, ExxonMobil, small regional banks, and everything in between. Expense ratio: 0.03%/year. That's $0.30/year on $1,000 invested.",
     }
   },
   {
