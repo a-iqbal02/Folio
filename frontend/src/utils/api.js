@@ -52,8 +52,11 @@ export const api = {
     return `${BASE}/snapshot/${sessionId}`
   },
 
-  async getPerformance(sessionId, period = '1y') {
-    const res = await request(`/portfolio/${sessionId}/performance?period=${period}`)
+  async getPerformance(sessionId, period = '1y', signal = undefined) {
+    const res = await request(
+      `/portfolio/${sessionId}/performance?period=${period}`,
+      signal ? { signal } : {}
+    )
     return res.json()
   },
 

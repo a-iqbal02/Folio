@@ -69,10 +69,18 @@ export default function PerformanceChart({ sessionId, compact = false }) {
     setLoading(true)
     setError(null)
     setData(null)
-    api.getPerformance(sessionId, period)
+
+    // 45s timeout — yfinance can be slow fetching individual tickers
+    const controller = new AbortController()
+    const timeout    = setTimeout(() => controller.abort(), 45000)
+
+    api.getPerformance(sessionId, period, controller.signal)
       .then(d  => setData(d))
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+      .catch(e => {
+        if (e.name === 'AbortError') setError('Request timed out. Tap Retry to try again.')
+        else setError(e.message)
+      })
+      .finally(() => { clearTimeout(timeout); setLoading(false) })
   }, [sessionId, period])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -135,22 +143,24 @@ export default function PerformanceChart({ sessionId, compact = false }) {
 
       {/* States */}
       {loading && (
-        <div className={`flex items-center justify-center gap-2 text-slate-500`}
+        <div className="flex flex-col items-center justify-center gap-2 text-slate-500"
           style={{ height: chartH }}>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          <span className="text-sm">Fetching market data…</span>
+          <Loader2 className="w-5 h-5 animate-spin text-blue-500/60" />
+          <span className="text-sm">Fetching live market data…</span>
+          <span className="text-xs text-slate-600">This can take up to 15 seconds</span>
         </div>
       )}
 
       {!loading && error && (
         <div className="flex flex-col items-center justify-center gap-2 text-slate-600 text-xs text-center px-4"
           style={{ height: chartH }}>
-          <p>Performance data unavailable for this portfolio.</p>
+          <p className="text-slate-500">Could not load performance data.</p>
+          <p className="text-slate-700 max-w-xs">{error}</p>
           <button
             onClick={fetchData}
-            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
+            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1 border border-blue-500/30 rounded-lg px-3 py-1.5"
           >
-            <RefreshCw className="w-3 h-3" /> Retry
+            <RefreshCw className="w-3 h-3" /> Try again
           </button>
         </div>
       )}

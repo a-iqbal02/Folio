@@ -40,8 +40,11 @@ def get_portfolio_performance(
 ):
     """
     Return normalized portfolio vs SPY performance time series.
-    Both series start at 100; the final value reflects total return.
-    Uses top-5 holdings only to keep the yfinance call fast and reliable.
+    Both series start at 100; end value reflects period total return.
+
+    Fetches each ticker individually so per-ticker failures are isolated
+    and don't break the whole response.  Falls back to SPY-only if no
+    portfolio tickers resolve.
     """
     import pandas as pd
     import yfinance as yf
@@ -53,85 +56,93 @@ def get_portfolio_performance(
     if period not in _VALID_PERIODS:
         period = "1y"
 
-    analytics = json.loads(cache.analytics_json)
-    holdings = analytics.get("holdings", [])
+    analytics   = json.loads(cache.analytics_json)
+    holdings    = analytics.get("holdings", [])
     if not holdings:
         raise HTTPException(status_code=400, detail="No holdings data.")
 
-    # Build weight map (weight_pct is 0–100)
+    # Build weight map  (weight_pct is already 0–100)
     raw_weights: dict[str, float] = {}
     for h in holdings:
-        ticker = str(h.get("ticker") or "").strip().upper()
+        t = str(h.get("ticker") or "").strip().upper()
         w = float(h.get("weight_pct") or 0)
-        if ticker and w > 0:
-            raw_weights[ticker] = w / 100.0
+        if t and w > 0:
+            raw_weights[t] = w / 100.0
 
     if not raw_weights:
-        raise HTTPException(status_code=400, detail="No valid ticker weights.")
+        raise HTTPException(status_code=400, detail="No valid holdings.")
 
-    # Limit to top 5 — covers the bulk of the portfolio and keeps yfinance fast
+    # Top-5 only — keeps latency low
     top5 = sorted(raw_weights, key=lambda t: -raw_weights[t])[:5]
-    weights = {t: raw_weights[t] for t in top5}
 
-    # Re-normalise so the subset sums to 1
-    total_w = sum(weights.values())
-    weights = {t: w / total_w for t, w in weights.items()}
+    # ── helper: fetch one ticker via the Ticker API ───────────────────────────
+    def fetch_close(ticker: str) -> "pd.Series | None":
+        try:
+            hist = yf.Ticker(ticker).history(period=period)
+            if hist.empty or "Close" not in hist.columns:
+                logger.warning(f"perf: empty history for {ticker}")
+                return None
+            s = hist["Close"].rename(ticker)
+            # Strip timezone — different yfinance builds return aware/naive indexes
+            if getattr(s.index, "tz", None) is not None:
+                s.index = s.index.tz_convert(None)
+            return s
+        except Exception as exc:
+            logger.warning(f"perf: fetch failed for {ticker}: {exc}")
+            return None
 
-    fetch_list = top5 + ["SPY"]
+    # Always need SPY as benchmark
+    spy_series = fetch_close("SPY")
+    if spy_series is None or spy_series.empty:
+        raise HTTPException(status_code=500,
+                            detail="Could not fetch SPY benchmark data.")
 
-    try:
-        raw = yf.download(
-            fetch_list,
-            period=period,
-            auto_adjust=True,
-            progress=False,
-        )
-    except Exception as exc:
-        logger.error(f"yfinance download failed: {exc}")
-        raise HTTPException(status_code=500, detail="Market data fetch failed.")
+    # Fetch portfolio tickers (failures are non-fatal)
+    ticker_series: dict[str, "pd.Series"] = {}
+    for t in top5:
+        s = fetch_close(t)
+        if s is not None and not s.empty:
+            ticker_series[t] = s
 
-    # Extract Close — MultiIndex when multiple tickers
-    try:
-        if isinstance(raw.columns, pd.MultiIndex):
-            closes = raw["Close"]
-        elif "Close" in raw.columns:
-            closes = raw[["Close"]].rename(columns={"Close": top5[0]})
-        else:
-            closes = raw
-        if isinstance(closes, pd.Series):
-            closes = closes.to_frame()
-    except Exception as exc:
-        logger.error(f"Close extraction error: {exc}")
-        raise HTTPException(status_code=500, detail="Unexpected market data format.")
+    logger.info(
+        f"perf {session_id[:8]}: fetched {len(ticker_series)}/{len(top5)} "
+        f"portfolio tickers + SPY for period={period}"
+    )
 
-    closes = closes.ffill().dropna(how="all")
+    # ── Build aligned DataFrame ───────────────────────────────────────────────
+    frames: dict[str, "pd.Series"] = {"SPY": spy_series}
+    frames.update(ticker_series)
+    closes = pd.DataFrame(frames).ffill().dropna(how="all")
 
     if closes.empty or "SPY" not in closes.columns:
-        raise HTTPException(status_code=500, detail="SPY benchmark data unavailable.")
+        raise HTTPException(status_code=500, detail="No usable price data.")
 
-    # Normalise: divide each column by its first non-null value, multiply by 100
-    first_row = closes.iloc[0]
-    normalized = closes.div(first_row) * 100.0
+    # Normalise every column to 100 at the first date
+    base       = closes.iloc[0]
+    normalized = closes.div(base) * 100.0
 
-    # Weighted portfolio line
-    portfolio = pd.Series(0.0, index=closes.index)
-    matched_w = 0.0
-    for ticker, w in weights.items():
-        if ticker in normalized.columns:
-            portfolio += normalized[ticker].ffill() * w
-            matched_w += w
+    # ── Weighted portfolio line ───────────────────────────────────────────────
+    matched_w = {t: raw_weights[t] for t in top5 if t in normalized.columns}
+    total_mw  = sum(matched_w.values())
 
-    if matched_w < 0.01:
-        raise HTTPException(status_code=400, detail="No portfolio tickers matched market data.")
-
-    # Re-anchor so the series starts at exactly 100
-    start = float(portfolio.iloc[0])
-    if start > 0:
-        portfolio = portfolio / start * 100.0
+    if total_mw < 0.01:
+        # No portfolio tickers resolved → show SPY as proxy
+        logger.warning(f"perf {session_id[:8]}: no tickers matched, using SPY as proxy")
+        portfolio = normalized["SPY"].copy()
+    else:
+        # Re-normalise subset weights to 1
+        matched_w = {t: w / total_mw for t, w in matched_w.items()}
+        portfolio  = pd.Series(0.0, index=closes.index)
+        for t, w in matched_w.items():
+            portfolio = portfolio + normalized[t].ffill() * w
+        # Re-anchor so it starts at exactly 100
+        start = float(portfolio.iloc[0])
+        if start > 0:
+            portfolio = portfolio / start * 100.0
 
     spy = normalized["SPY"]
 
-    # Downsample to ≤ 252 data points for payload size
+    # Downsample to ≤ 252 points for payload size
     step = max(1, len(closes) // 252)
     idx  = list(range(0, len(closes), step))
 
