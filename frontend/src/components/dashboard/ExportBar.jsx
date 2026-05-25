@@ -9,7 +9,7 @@ export default function ExportBar({ sessionId }) {
     const url = api.snapshotUrl(sessionId)
     const a = document.createElement('a')
     a.href = url
-    a.download = `portfoliolens-${sessionId.slice(0, 8)}.pdf`
+    a.download = `folio-${sessionId.slice(0, 8)}.pdf`
     a.click()
   }
 

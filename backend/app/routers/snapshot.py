@@ -36,7 +36,7 @@ def download_snapshot(session_id: str, request: Request, db: Session = Depends(g
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="portfoliolens-{session_id[:8]}.pdf"'
+            "Content-Disposition": f'attachment; filename="folio-{session_id[:8]}.pdf"'
         },
     )
 

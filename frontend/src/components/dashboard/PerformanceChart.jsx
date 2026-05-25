@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
+import { TrendingUp, Loader2, RefreshCw } from 'lucide-react'
 import { api } from '../../utils/api'
 
 const PERIODS = [
@@ -64,7 +64,7 @@ export default function PerformanceChart({ sessionId, compact = false }) {
   const [error,   setError]   = useState(null)
   const [period,  setPeriod]  = useState('1y')
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     if (!sessionId) return
     setLoading(true)
     setError(null)
@@ -74,6 +74,8 @@ export default function PerformanceChart({ sessionId, compact = false }) {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [sessionId, period])
+
+  useEffect(() => { fetchData() }, [fetchData])
 
   const chartData = data?.labels.map((date, i) => ({
     date,
@@ -141,9 +143,15 @@ export default function PerformanceChart({ sessionId, compact = false }) {
       )}
 
       {!loading && error && (
-        <div className="flex items-center justify-center text-slate-600 text-xs text-center px-4"
+        <div className="flex flex-col items-center justify-center gap-2 text-slate-600 text-xs text-center px-4"
           style={{ height: chartH }}>
-          Performance data unavailable for this portfolio.
+          <p>Performance data unavailable for this portfolio.</p>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1"
+          >
+            <RefreshCw className="w-3 h-3" /> Retry
+          </button>
         </div>
       )}
 

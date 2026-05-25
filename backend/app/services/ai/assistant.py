@@ -179,14 +179,21 @@ async def stream_chat_response(
             yield "The AI assistant is rate limited right now. Please wait a moment and try again."
             return
         except anthropic.BadRequestError as e:
-            # 400 usually means malformed messages (e.g. empty content, wrong alternation).
-            # Log the detail so it's diagnosable, then surface a clean message.
-            logger.error(f"BadRequestError on {model}: {e}")
-            yield (
-                "The AI assistant received a malformed request. "
-                "This can happen if a previous response was empty. "
-                "Please refresh and try again."
-            )
+            # 400 can mean malformed messages OR a billing/credit issue.
+            # Detect billing errors specifically so the user gets a useful message.
+            err_str = str(e).lower()
+            if "credit balance" in err_str or "too low" in err_str or "billing" in err_str:
+                yield (
+                    "The AI assistant is currently unavailable — the API account has run out of credits. "
+                    "Please contact the site owner to top up credits at console.anthropic.com/billing."
+                )
+            else:
+                logger.error(f"BadRequestError on {model}: {e}")
+                yield (
+                    "The AI assistant received a malformed request. "
+                    "This can happen if a previous response was empty. "
+                    "Please refresh and try again."
+                )
             return
         except anthropic.NotFoundError as e:
             # Model name not available to this key; try the next model.

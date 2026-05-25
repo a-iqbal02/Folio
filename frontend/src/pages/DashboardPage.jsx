@@ -27,8 +27,8 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState(location.state?.analytics || null)
   const [loading, setLoading] = useState(!analytics)
   const [error, setError] = useState(null)
-  // If shared via ?view=simple, open simple view directly
-  const [view, setView] = useState(searchParams.get('view') === 'simple' ? 'simple' : 'advanced')
+  // Default to Simple view; Advanced requires explicit ?view=advanced or toggle
+  const [view, setView] = useState(searchParams.get('view') === 'advanced' ? 'advanced' : 'simple')
   const { saveSession } = useSavedSessions()
 
   useEffect(() => {
