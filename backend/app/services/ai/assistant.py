@@ -114,39 +114,106 @@ def build_portfolio_context(analytics: dict) -> str:
     return "\n".join(lines)
 
 
+# Model fallback chain. Tries each in order until one works.
+# Keeps the assistant alive even if one model name is retired or
+# unavailable to a given key.
+MODEL_CHAIN = [
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5-20251001",
+    "claude-3-5-sonnet-latest",
+    "claude-3-5-sonnet-20241022",
+]
+
+
 async def stream_chat_response(
     user_message: str,
     conversation_history: list[dict],
     analytics: dict,
 ) -> AsyncIterator[str]:
     """
-    Stream chat response tokens using Anthropic's streaming API.
-    conversation_history: list of {role, content} dicts.
+    Stream chat response tokens using Anthropic's API.
+
+    Robustness:
+      - Tries a chain of model names so a single retired model does not
+        break the assistant.
+      - Falls back to a non-streaming call if streaming fails.
+      - Surfaces the real error class to the user instead of a generic
+        message, so misconfigurations are diagnosable.
     """
     if not settings.anthropic_api_key:
-        yield "PortfolioLens Assistant requires an Anthropic API key. Please add ANTHROPIC_API_KEY to your .env file."
+        yield (
+            "The AI assistant is not configured yet. The site owner needs to "
+            "add a valid ANTHROPIC_API_KEY in the server environment."
+        )
         return
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
     portfolio_context = build_portfolio_context(analytics)
     system = SYSTEM_PROMPT.format(portfolio_context=portfolio_context)
-
-    # Build message history — cap at last 20 messages to stay within context
     messages = conversation_history[-20:] + [{"role": "user", "content": user_message}]
 
-    try:
-        with client.messages.stream(
-            model="claude-sonnet-4-20250514",
-            max_tokens=800,
-            system=system,
-            messages=messages,
-        ) as stream:
-            for text in stream.text_stream:
+    last_error: Exception | None = None
+
+    for model in MODEL_CHAIN:
+        # Attempt 1: streaming
+        try:
+            produced = False
+            with client.messages.stream(
+                model=model,
+                max_tokens=800,
+                system=system,
+                messages=messages,
+            ) as stream:
+                for text in stream.text_stream:
+                    produced = True
+                    yield text
+            if produced:
+                return
+        except anthropic.AuthenticationError:
+            yield (
+                "The AI assistant could not authenticate. The API key on the "
+                "server appears to be invalid or expired."
+            )
+            return
+        except anthropic.RateLimitError:
+            yield "The AI assistant is rate limited right now. Please wait a moment and try again."
+            return
+        except anthropic.NotFoundError as e:
+            # Model name not available to this key; try the next model.
+            last_error = e
+            logger.warning(f"Model {model} not available, trying next. {e}")
+            continue
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Streaming failed on {model}: {e}. Trying non-streaming.")
+
+        # Attempt 2: non-streaming fallback for this same model
+        try:
+            resp = client.messages.create(
+                model=model,
+                max_tokens=800,
+                system=system,
+                messages=messages,
+            )
+            text = "".join(
+                block.text for block in resp.content if getattr(block, "type", "") == "text"
+            )
+            if text:
                 yield text
-    except anthropic.AuthenticationError:
-        yield "Invalid Anthropic API key. Please check your ANTHROPIC_API_KEY in .env."
-    except anthropic.RateLimitError:
-        yield "Rate limit reached. Please wait a moment and try again."
-    except Exception as e:
-        logger.error(f"AI assistant error: {e}")
-        yield "The AI assistant encountered an error. Please try again."
+                return
+        except anthropic.NotFoundError as e:
+            last_error = e
+            continue
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Non-streaming also failed on {model}: {e}")
+            continue
+
+    # Every model failed. Surface a useful, specific message.
+    logger.error(f"All models failed in chain. Last error: {last_error}")
+    yield (
+        "The AI assistant could not reach a working model. "
+        f"(Technical detail: {type(last_error).__name__ if last_error else 'unknown'}). "
+        "If you are the site owner, verify the API key and that your account "
+        "has access to a current Claude model."
+    )

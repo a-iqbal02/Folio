@@ -21,7 +21,7 @@ function EtfChip({ etf }) {
       <div className="flex items-center justify-between gap-3 mb-1">
         <p className="font-mono font-bold text-blue-400 text-sm">{etf.ticker}</p>
         {etf.expense_ratio != null && (
-          <span className="text-emerald-400 font-semibold">{(etf.expense_ratio * 100).toFixed(2)}% ER</span>
+          <span className="text-emerald-400 font-semibold">{etf.expense_ratio.toFixed(2)}% ER</span>
         )}
       </div>
       <p className="text-slate-300 font-medium leading-snug">{etf.name}</p>

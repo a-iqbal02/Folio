@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/layout/Layout'
 import UploadPage from './pages/UploadPage'
-import ManualPage from './pages/ManualPage'
 import DashboardPage from './pages/DashboardPage'
 import LandingPage from './pages/LandingPage'
 import ETFExplorerPage from './pages/ETFExplorerPage'
@@ -14,7 +13,7 @@ export default function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<LandingPage />} />
         <Route path="upload" element={<UploadPage />} />
-        <Route path="manual" element={<ManualPage />} />
+        <Route path="manual" element={<Navigate to="/upload" replace />} />
         <Route path="etf-explorer" element={<ETFExplorerPage />} />
         <Route path="etf-guide" element={<ETFEducationPage />} />
         <Route path="growth-calculator" element={<GrowthCalculatorPage />} />

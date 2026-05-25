@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.portfolio import AnalyticsCache
 from app.utils.snapshot import generate_snapshot_pdf
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["snapshot"])
@@ -21,9 +22,9 @@ def download_snapshot(session_id: str, request: Request, db: Session = Depends(g
 
     analytics = json.loads(cache.analytics_json)
 
-    # Build a shareable URL pointing to this session's dashboard
-    base_url = str(request.base_url).rstrip("/")
-    share_url = f"{base_url}/dashboard/{session_id}"
+    # Share URL must point at the FRONTEND (Vercel), not the backend.
+    frontend = settings.frontend_url.rstrip("/")
+    share_url = f"{frontend}/dashboard/{session_id}"
 
     try:
         pdf_bytes = generate_snapshot_pdf(analytics, session_id, share_url)

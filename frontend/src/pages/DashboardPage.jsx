@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
-import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowLeft, LayoutDashboard, Sparkles } from 'lucide-react'
 import { api } from '../utils/api'
 import { useSavedSessions } from '../hooks/useSession'
 
@@ -15,6 +15,7 @@ import AgeGuidance from '../components/dashboard/AgeGuidance'
 import GainsSummary from '../components/dashboard/GainsSummary'
 import ChatPanel from '../components/dashboard/ChatPanel'
 import ExportBar from '../components/dashboard/ExportBar'
+import SimpleView from '../components/dashboard/SimpleView'
 
 export default function DashboardPage() {
   const { sessionId } = useParams()
@@ -24,11 +25,11 @@ export default function DashboardPage() {
   const [analytics, setAnalytics] = useState(location.state?.analytics || null)
   const [loading, setLoading] = useState(!analytics)
   const [error, setError] = useState(null)
+  const [view, setView] = useState('advanced') // 'advanced' | 'simple'
   const { saveSession } = useSavedSessions()
 
   useEffect(() => {
     if (analytics) {
-      // Save immediately if we arrived with state (fresh analysis)
       const filename = location.state?.filename || 'Portfolio'
       saveSession(sessionId, analytics, filename)
       return
@@ -63,55 +64,98 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen">
       {/* Top bar */}
-      <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 py-3 flex items-center justify-between">
-        <button onClick={() => nav('/upload')} className="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm transition-colors">
+      <div className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-slate-800 px-6 py-3 flex items-center justify-between gap-4">
+        <button
+          onClick={() => nav('/upload')}
+          className="flex items-center gap-2 text-slate-400 hover:text-slate-200 text-sm transition-colors shrink-0"
+        >
           <ArrowLeft className="w-4 h-4" /> New Analysis
         </button>
-        <ExportBar sessionId={sessionId} />
-      </div>
 
-      <div className="px-4 md:px-8 py-6 space-y-6 max-w-screen-2xl mx-auto">
-        {/* Summary */}
-        <SummaryBar summary={summary} />
+        {/* View toggle */}
+        <div className="flex items-center bg-slate-900 border border-slate-700/60 rounded-xl p-1 gap-0.5">
+          <button
+            onClick={() => setView('advanced')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              view === 'advanced'
+                ? 'bg-slate-700 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Advanced
+          </button>
+          <button
+            onClick={() => setView('simple')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              view === 'simple'
+                ? 'bg-blue-600 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Simple
+          </button>
+        </div>
 
-        {/* Score Cards */}
-        <ScoreCards risk={risk_score} diversification={diversification_score} concentration={concentration} />
-
-        {/* Gains summary (if available) */}
-        {gains_summary?.available && <GainsSummary gains={gains_summary} />}
-
-        {/* Age guidance */}
-        {age_guidance && <AgeGuidance guidance={age_guidance} />}
-
-        {/* Allocation Charts */}
-        <AllocationCharts sectors={sector_breakdown} assetClasses={asset_class_breakdown} holdings={holdings} />
-
-        {/* Benchmark */}
-        {benchmark?.available && <BenchmarkChart benchmark={benchmark} />}
-
-        {/* Warnings */}
-        {concentration?.warnings?.length > 0 && (
-          <ConcentrationWarnings warnings={concentration.warnings} />
-        )}
-
-        {/* ETF Recommendations */}
-        {etf_recommendations?.recommendations?.length > 0 && (
-          <EtfRecommendations etfData={etf_recommendations} />
-        )}
-
-        {/* Holdings Table */}
-        <HoldingsTable holdings={holdings} />
-
-        {/* AI Chat Panel */}
-        <ChatPanel sessionId={sessionId} />
-
-        {/* Disclaimer */}
-        <div className="text-center pb-8">
-          <p className="text-slate-600 text-xs max-w-2xl mx-auto leading-relaxed">
-            {analytics.disclaimer}
-          </p>
+        <div className="shrink-0">
+          <ExportBar sessionId={sessionId} />
         </div>
       </div>
+
+      {/* ── Simple View ── */}
+      {view === 'simple' && (
+        <SimpleView
+          analytics={analytics}
+          onAdvancedClick={() => setView('advanced')}
+        />
+      )}
+
+      {/* ── Advanced View ── */}
+      {view === 'advanced' && (
+        <div className="px-4 md:px-8 py-6 space-y-6 max-w-screen-2xl mx-auto">
+          {/* Summary */}
+          <SummaryBar summary={summary} />
+
+          {/* Score Cards */}
+          <ScoreCards risk={risk_score} diversification={diversification_score} concentration={concentration} />
+
+          {/* Gains summary (if available) */}
+          {gains_summary?.available && <GainsSummary gains={gains_summary} />}
+
+          {/* Age guidance */}
+          {age_guidance && <AgeGuidance guidance={age_guidance} />}
+
+          {/* Allocation Charts */}
+          <AllocationCharts sectors={sector_breakdown} assetClasses={asset_class_breakdown} holdings={holdings} />
+
+          {/* Benchmark */}
+          {benchmark?.available && <BenchmarkChart benchmark={benchmark} />}
+
+          {/* Warnings */}
+          {concentration?.warnings?.length > 0 && (
+            <ConcentrationWarnings warnings={concentration.warnings} />
+          )}
+
+          {/* ETF Recommendations */}
+          {etf_recommendations?.recommendations?.length > 0 && (
+            <EtfRecommendations etfData={etf_recommendations} />
+          )}
+
+          {/* Holdings Table */}
+          <HoldingsTable holdings={holdings} />
+
+          {/* AI Chat Panel */}
+          <ChatPanel sessionId={sessionId} />
+
+          {/* Disclaimer */}
+          <div className="text-center pb-8">
+            <p className="text-slate-600 text-xs max-w-2xl mx-auto leading-relaxed">
+              {analytics.disclaimer}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

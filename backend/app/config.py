@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     database_url: str = "sqlite:///./portfoliolens.db"
     allowed_origins: str = "http://localhost:5173,http://localhost:3000"
+    frontend_url: str = "http://localhost:5173"
     ticker_fetch_timeout: int = 8
     ticker_concurrency: int = 5
     tesseract_cmd: str = ""
