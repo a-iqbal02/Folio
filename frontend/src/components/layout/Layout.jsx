@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator, Menu, ChevronRight } from 'lucide-react'
+import { Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator, Menu, ChevronRight, GitCompare } from 'lucide-react'
 import clsx from 'clsx'
 import { useSavedSessions } from '../../hooks/useSession'
 import FolioLogo from './FolioLogo'
@@ -11,6 +11,7 @@ const NAV = [
   { to: '/etf-explorer',      label: 'ETF Explorer',  icon: TrendingUp, badge: 'New' },
   { to: '/etf-guide',         label: 'ETF Guide',     icon: BookOpen },
   { to: '/growth-calculator', label: 'Growth Calc',   icon: Calculator },
+  { to: '/etf-compare',       label: 'ETF Compare',   icon: GitCompare },
 ]
 
 function fmtCurrency(v) {

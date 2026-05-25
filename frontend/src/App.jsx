@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage'
 import ETFExplorerPage from './pages/ETFExplorerPage'
 import ETFEducationPage from './pages/ETFEducationPage'
 import GrowthCalculatorPage from './pages/GrowthCalculatorPage'
+import ETFComparePage from './pages/ETFComparePage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="etf-explorer" element={<ETFExplorerPage />} />
         <Route path="etf-guide" element={<ETFEducationPage />} />
         <Route path="growth-calculator" element={<GrowthCalculatorPage />} />
+        <Route path="etf-compare" element={<ETFComparePage />} />
         <Route path="dashboard/:sessionId" element={<DashboardPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

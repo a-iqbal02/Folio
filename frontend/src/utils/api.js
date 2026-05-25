@@ -60,6 +60,13 @@ export const api = {
     return res.json()
   },
 
+  async compareETFs(tickers, period = '1y') {
+    const res = await request(
+      `/market/compare?tickers=${encodeURIComponent(tickers)}&period=${period}`
+    )
+    return res.json()
+  },
+
   async streamChat(sessionId, message, history, onToken) {
     const res = await fetch(`${BASE}/chat`, {
       method: 'POST',

@@ -1,0 +1,3 @@
+# Railway build config — installs Tesseract OCR binary for screenshot parsing
+[phases.setup]
+nixPkgs = ["tesseract"]
