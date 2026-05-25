@@ -14,7 +14,8 @@ export default function ExportBar({ sessionId }) {
   }
 
   function copyLink() {
-    const url = `${window.location.origin}/dashboard/${sessionId}`
+    // Share link always opens Simple (shareable) view
+    const url = `${window.location.origin}/dashboard/${sessionId}?view=simple`
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)

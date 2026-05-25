@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Shield, PieChart, Layers, TrendingUp, TrendingDown, Copy, Check, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
 import { fmt } from '../../utils/format'
 import FolioLogo from '../layout/FolioLogo'
+import PerformanceChart from './PerformanceChart'
 
 function StatCard({ icon: Icon, label, value, sub, color }) {
   return (
@@ -46,7 +46,7 @@ function SectorBar({ sector, portfolioPct, sp500Pct, delta, status }) {
   )
 }
 
-export default function SimpleView({ analytics, onAdvancedClick }) {
+export default function SimpleView({ analytics, sessionId, onAdvancedClick }) {
   const [copied, setCopied] = useState(false)
   const { summary, risk_score, diversification_score, gains_summary, benchmark, concentration } = analytics
 
@@ -75,7 +75,11 @@ export default function SimpleView({ analytics, onAdvancedClick }) {
   const isPositive = (gains_summary?.total_gain_loss ?? 0) >= 0
 
   function copyLink() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+    // Always share the simple view URL
+    const base = sessionId
+      ? `${window.location.origin}/dashboard/${sessionId}?view=simple`
+      : window.location.href
+    navigator.clipboard.writeText(base).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -203,6 +207,14 @@ export default function SimpleView({ analytics, onAdvancedClick }) {
                     />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Performance line chart (compact) */}
+            {sessionId && (
+              <div className="mb-5 -mx-1">
+                <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Performance</p>
+                <PerformanceChart sessionId={sessionId} compact />
               </div>
             )}
 

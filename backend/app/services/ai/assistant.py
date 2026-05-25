@@ -178,6 +178,16 @@ async def stream_chat_response(
         except anthropic.RateLimitError:
             yield "The AI assistant is rate limited right now. Please wait a moment and try again."
             return
+        except anthropic.BadRequestError as e:
+            # 400 usually means malformed messages (e.g. empty content, wrong alternation).
+            # Log the detail so it's diagnosable, then surface a clean message.
+            logger.error(f"BadRequestError on {model}: {e}")
+            yield (
+                "The AI assistant received a malformed request. "
+                "This can happen if a previous response was empty. "
+                "Please refresh and try again."
+            )
+            return
         except anthropic.NotFoundError as e:
             # Model name not available to this key; try the next model.
             last_error = e

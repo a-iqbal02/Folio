@@ -29,7 +29,15 @@ export default function ChatPanel({ sessionId }) {
     setInput('')
 
     const userEntry = { role: 'user', content: userMsg }
-    const history = messages.map((m) => ({ role: m.role, content: m.content }))
+    // Filter out messages with empty content (e.g. from a previous failed stream)
+    // and ensure strict user/assistant alternation so the API never sees consecutive roles
+    const rawHistory = messages
+      .filter((m) => m.content && m.content.trim())
+      .map((m) => ({ role: m.role, content: m.content }))
+    // Drop trailing assistant message so we always end on a user turn
+    const history = rawHistory[rawHistory.length - 1]?.role === 'assistant'
+      ? rawHistory.slice(0, -1)
+      : rawHistory
     setMessages((prev) => [...prev, userEntry, { role: 'assistant', content: '', streaming: true }])
     setStreaming(true)
 

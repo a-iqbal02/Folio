@@ -160,22 +160,38 @@ const UNIQUE_ETFS = ETF_DATABASE.filter((etf, index, self) =>
 )
 
 const TRENDING = [
-  { label: "🤖 AI",               filter: "Artificial Intelligence" },
-  { label: "💾 Semiconductors",    filter: "Semiconductors" },
-  { label: "🏢 Data Centers",      filter: "Data Centers & Cloud" },
-  { label: "🚀 Space & Defense",   filter: "Space & Defense" },
-  { label: "🔒 Cybersecurity",     filter: "Cybersecurity" },
-  { label: "⚛️ Uranium",           filter: "Energy & Commodities", tag: "uranium" },
-  { label: "💰 Dividend Income",   filter: "Dividend & Income" },
-  { label: "🔋 Clean Energy",      filter: "Energy & Commodities", tag: "clean energy" },
-  { label: "₿ Crypto ETFs",       filter: "New & Trending", tag: "crypto" },
-  { label: "🧬 Biotech",           filter: "Healthcare & Biotech" },
-  { label: "🇨🇳 China",            filter: "Global Markets", tag: "china" },
-  { label: "🇯🇵 Japan",            filter: "Global Markets", tag: "japan" },
-  { label: "🇰🇷 Korea",            filter: "Global Markets", tag: "korea" },
-  { label: "🌍 Europe",            filter: "Global Markets", tag: "europe" },
-  { label: "🌏 Emerging Markets",  filter: "Global Markets", tag: "emerging" },
-  { label: "💡 Innovation",        filter: "Innovation" },
+  { label: "🤖 AI",              emoji: "🤖", name: "AI & Robotics",     filter: "Artificial Intelligence",    tag: null,
+    card:   "hover:border-violet-500/40 hover:bg-violet-500/5",   active: "border-violet-400/60 bg-violet-500/15" },
+  { label: "💾 Semiconductors",  emoji: "💾", name: "Semiconductors",    filter: "Semiconductors",             tag: null,
+    card:   "hover:border-blue-500/40 hover:bg-blue-500/5",       active: "border-blue-400/60 bg-blue-500/15" },
+  { label: "🏢 Data Centers",    emoji: "🏢", name: "Data Centers",      filter: "Data Centers & Cloud",       tag: null,
+    card:   "hover:border-cyan-500/40 hover:bg-cyan-500/5",       active: "border-cyan-400/60 bg-cyan-500/15" },
+  { label: "🚀 Space & Defense", emoji: "🚀", name: "Space & Defense",   filter: "Space & Defense",            tag: null,
+    card:   "hover:border-indigo-500/40 hover:bg-indigo-500/5",   active: "border-indigo-400/60 bg-indigo-500/15" },
+  { label: "🔒 Cybersecurity",   emoji: "🔒", name: "Cybersecurity",     filter: "Cybersecurity",              tag: null,
+    card:   "hover:border-orange-500/40 hover:bg-orange-500/5",   active: "border-orange-400/60 bg-orange-500/15" },
+  { label: "⚛️ Uranium",         emoji: "⚛️", name: "Uranium & Nuclear", filter: "Energy & Commodities",       tag: "uranium",
+    card:   "hover:border-yellow-500/40 hover:bg-yellow-500/5",   active: "border-yellow-400/60 bg-yellow-500/15" },
+  { label: "💰 Dividend Income", emoji: "💰", name: "Dividend Income",   filter: "Dividend & Income",          tag: null,
+    card:   "hover:border-emerald-500/40 hover:bg-emerald-500/5", active: "border-emerald-400/60 bg-emerald-500/15" },
+  { label: "🔋 Clean Energy",    emoji: "🔋", name: "Clean Energy",      filter: "Energy & Commodities",       tag: "clean energy",
+    card:   "hover:border-teal-500/40 hover:bg-teal-500/5",       active: "border-teal-400/60 bg-teal-500/15" },
+  { label: "₿ Crypto ETFs",     emoji: "₿",  name: "Crypto ETFs",       filter: "New & Trending",             tag: "crypto",
+    card:   "hover:border-amber-500/40 hover:bg-amber-500/5",     active: "border-amber-400/60 bg-amber-500/15" },
+  { label: "🧬 Biotech",         emoji: "🧬", name: "Biotech & Health",  filter: "Healthcare & Biotech",       tag: null,
+    card:   "hover:border-pink-500/40 hover:bg-pink-500/5",       active: "border-pink-400/60 bg-pink-500/15" },
+  { label: "🇨🇳 China",          emoji: "🇨🇳", name: "China",             filter: "Global Markets",             tag: "china",
+    card:   "hover:border-red-500/40 hover:bg-red-500/5",         active: "border-red-400/60 bg-red-500/15" },
+  { label: "🇯🇵 Japan",          emoji: "🇯🇵", name: "Japan",             filter: "Global Markets",             tag: "japan",
+    card:   "hover:border-rose-500/40 hover:bg-rose-500/5",       active: "border-rose-400/60 bg-rose-500/15" },
+  { label: "🇰🇷 Korea",          emoji: "🇰🇷", name: "South Korea",       filter: "Global Markets",             tag: "korea",
+    card:   "hover:border-sky-500/40 hover:bg-sky-500/5",         active: "border-sky-400/60 bg-sky-500/15" },
+  { label: "🌍 Europe",          emoji: "🌍", name: "Europe",            filter: "Global Markets",             tag: "europe",
+    card:   "hover:border-purple-500/40 hover:bg-purple-500/5",   active: "border-purple-400/60 bg-purple-500/15" },
+  { label: "🌏 Emerging Markets",emoji: "🌏", name: "Emerging Markets",  filter: "Global Markets",             tag: "emerging",
+    card:   "hover:border-green-500/40 hover:bg-green-500/5",     active: "border-green-400/60 bg-green-500/15" },
+  { label: "💡 Innovation",      emoji: "💡", name: "Innovation & EV",   filter: "Innovation",                 tag: null,
+    card:   "hover:border-yellow-500/40 hover:bg-yellow-500/5",   active: "border-yellow-400/60 bg-yellow-500/15" },
 ]
 
 const ALL_CATEGORIES = [...new Set(UNIQUE_ETFS.map(e => e.category))].sort()
@@ -340,27 +356,51 @@ export default function ETFExplorerPage() {
         )}
       </div>
 
-      {/* ── Trending themes strip ── */}
+      {/* ── Trending themes grid ── */}
       <div className="mb-5">
         <div className="flex items-center gap-2 mb-3">
           <Flame className="w-4 h-4 text-orange-400" />
           <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Trending Themes</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {TRENDING.map(t => (
+          {activeTrend && (
             <button
-              key={t.label}
-              onClick={() => selectTrend(t.label)}
-              className={clsx(
-                'text-sm px-3 py-1.5 rounded-lg border font-medium transition-all duration-150',
-                activeTrend === t.label
-                  ? 'bg-blue-600 border-blue-500 text-white shadow-md'
-                  : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white'
-              )}
+              onClick={() => setActiveTrend(null)}
+              className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors"
             >
-              {t.label}
+              <X className="w-3 h-3" /> Clear
             </button>
-          ))}
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+          {TRENDING.map(t => {
+            const count = UNIQUE_ETFS.filter(e =>
+              e.category === t.filter && (!t.tag || e.tags.includes(t.tag))
+            ).length
+            const isActive = activeTrend === t.label
+            return (
+              <button
+                key={t.label}
+                onClick={() => selectTrend(t.label)}
+                className={clsx(
+                  'relative text-left rounded-xl p-3 border transition-all duration-200',
+                  isActive
+                    ? t.active
+                    : `bg-slate-800/40 border-slate-700/60 ${t.card}`
+                )}
+              >
+                <div className="text-2xl mb-1.5 select-none leading-none">{t.emoji}</div>
+                <p className={clsx(
+                  'text-xs font-semibold truncate leading-tight',
+                  isActive ? 'text-white' : 'text-slate-200'
+                )}>
+                  {t.name}
+                </p>
+                <p className="text-slate-500 text-xs mt-0.5">{count} funds</p>
+                {isActive && (
+                  <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-white/60" />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 

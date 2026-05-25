@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2, AlertCircle, ArrowLeft, LayoutDashboard, Sparkles } from 'lucide-react'
 import { api } from '../utils/api'
 import { useSavedSessions } from '../hooks/useSession'
@@ -16,16 +16,19 @@ import GainsSummary from '../components/dashboard/GainsSummary'
 import ChatPanel from '../components/dashboard/ChatPanel'
 import ExportBar from '../components/dashboard/ExportBar'
 import SimpleView from '../components/dashboard/SimpleView'
+import PerformanceChart from '../components/dashboard/PerformanceChart'
 
 export default function DashboardPage() {
   const { sessionId } = useParams()
   const location = useLocation()
   const nav = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const [analytics, setAnalytics] = useState(location.state?.analytics || null)
   const [loading, setLoading] = useState(!analytics)
   const [error, setError] = useState(null)
-  const [view, setView] = useState('advanced') // 'advanced' | 'simple'
+  // If shared via ?view=simple, open simple view directly
+  const [view, setView] = useState(searchParams.get('view') === 'simple' ? 'simple' : 'advanced')
   const { saveSession } = useSavedSessions()
 
   useEffect(() => {
@@ -107,6 +110,7 @@ export default function DashboardPage() {
       {view === 'simple' && (
         <SimpleView
           analytics={analytics}
+          sessionId={sessionId}
           onAdvancedClick={() => setView('advanced')}
         />
       )}
@@ -131,6 +135,9 @@ export default function DashboardPage() {
 
           {/* Benchmark */}
           {benchmark?.available && <BenchmarkChart benchmark={benchmark} />}
+
+          {/* Portfolio vs S&P 500 line chart */}
+          <PerformanceChart sessionId={sessionId} />
 
           {/* Warnings */}
           {concentration?.warnings?.length > 0 && (

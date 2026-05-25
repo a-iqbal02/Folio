@@ -52,6 +52,11 @@ export const api = {
     return `${BASE}/snapshot/${sessionId}`
   },
 
+  async getPerformance(sessionId, period = '1y') {
+    const res = await request(`/portfolio/${sessionId}/performance?period=${period}`)
+    return res.json()
+  },
+
   async streamChat(sessionId, message, history, onToken) {
     const res = await fetch(`${BASE}/chat`, {
       method: 'POST',

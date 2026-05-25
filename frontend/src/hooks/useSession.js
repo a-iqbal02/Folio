@@ -13,6 +13,11 @@ export function useSavedSessions() {
     } catch (_) {}
   }, [])
 
+  function persist(updated) {
+    setSessions(updated)
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(updated)) } catch (_) {}
+  }
+
   function saveSession(sessionId, analytics, filename) {
     const entry = {
       sessionId,
@@ -37,5 +42,15 @@ export function useSavedSessions() {
     })
   }
 
-  return { sessions, saveSession, removeSession }
+  function renameSession(sessionId, newName) {
+    setSessions((prev) => {
+      const updated = prev.map((s) =>
+        s.sessionId === sessionId ? { ...s, filename: newName } : s
+      )
+      try { localStorage.setItem(SESSION_KEY, JSON.stringify(updated)) } catch (_) {}
+      return updated
+    })
+  }
+
+  return { sessions, saveSession, removeSession, renameSession }
 }
