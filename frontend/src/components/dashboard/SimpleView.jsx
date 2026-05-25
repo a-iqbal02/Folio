@@ -211,10 +211,10 @@ export default function SimpleView({ analytics, sessionId, onAdvancedClick }) {
             )}
 
             {/* Performance line chart (compact) */}
-            {analytics?.holdings?.length > 0 && (
+            {sessionId && (
               <div className="mb-5 -mx-1">
                 <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest mb-3 px-1">Performance</p>
-                <PerformanceChart holdings={analytics.holdings} compact />
+                <PerformanceChart sessionId={sessionId} compact />
               </div>
             )}
 

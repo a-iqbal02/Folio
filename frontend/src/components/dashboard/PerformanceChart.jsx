@@ -1,16 +1,17 @@
 /**
- * PerformanceChart — fetches Yahoo Finance directly from the browser.
+ * PerformanceChart — calls the backend /api/portfolio/{id}/performance endpoint.
  *
- * Browsers are allowed by Yahoo Finance's CORS policy; Railway server IPs
- * get blocked, which is why the backend endpoint was failing.
- * We bypass the backend entirely here.
+ * The backend fetches from Stooq.com (free, no auth, server-IP-friendly)
+ * with Yahoo Finance as a fallback. This avoids the Yahoo Finance crumb/cookie
+ * requirement that causes "Failed to fetch" when hitting YF directly.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { TrendingUp, Loader2, RefreshCw } from 'lucide-react'
+import { api } from '../../utils/api'
 
 const PERIODS = [
   { key: '6mo', label: '6M' },
@@ -18,30 +19,6 @@ const PERIODS = [
   { key: '2y',  label: '2Y' },
   { key: '5y',  label: '5Y' },
 ]
-
-// ── Yahoo Finance chart API (browser-only, CORS-safe) ─────────────────────────
-async function fetchYahooCloses(ticker, range) {
-  const base = 'https://query1.finance.yahoo.com/v8/finance/chart'
-  const url  = `${base}/${encodeURIComponent(ticker)}?range=${range}&interval=1d&includePrePost=false`
-  try {
-    const res = await fetch(url, { headers: { Accept: 'application/json' } })
-    if (!res.ok) return null
-    const body   = await res.json()
-    const result = body?.chart?.result?.[0]
-    if (!result) return null
-    const timestamps = result.timestamp || []
-    const prices     =
-      result.indicators?.adjclose?.[0]?.adjclose ||
-      result.indicators?.quote?.[0]?.close       || []
-    if (!timestamps.length || !prices.length) return null
-    return timestamps.map((ts, i) => ({
-      date:  new Date(ts * 1000).toISOString().slice(0, 10),
-      close: prices[i],
-    })).filter(p => p.close != null)
-  } catch {
-    return null
-  }
-}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 function ReturnBadge({ value, label, color }) {
@@ -77,30 +54,17 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
-// holdings: array of holding objects with {ticker, weight_pct}
-// compact:  true = smaller height (used inside SimpleView)
-export default function PerformanceChart({ holdings = [], compact = false }) {
+// sessionId: the portfolio session id (used to call the backend)
+// compact:   true = smaller height (used inside SimpleView)
+export default function PerformanceChart({ sessionId, compact = false }) {
   const [chartData, setChartData] = useState(null)
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState(null)
   const [period,    setPeriod]    = useState('1y')
 
-  // Top-5 holdings by weight, weights re-normalised to sum to 1
-  const top5 = useMemo(() => {
-    const sorted = [...holdings]
-      .filter(h => h.ticker && (h.weight_pct || 0) > 0)
-      .sort((a, b) => (b.weight_pct || 0) - (a.weight_pct || 0))
-      .slice(0, 5)
-    const totalW = sorted.reduce((s, h) => s + (h.weight_pct || 0), 0)
-    return sorted.map(h => ({
-      ticker: h.ticker.trim().toUpperCase(),
-      weight: totalW > 0 ? (h.weight_pct || 0) / totalW : 0,
-    }))
-  }, [holdings])
-
   const fetchData = useCallback(async () => {
-    if (!top5.length) {
-      setError('No holdings data.')
+    if (!sessionId) {
+      setError('No session ID.')
       setLoading(false)
       return
     }
@@ -109,64 +73,27 @@ export default function PerformanceChart({ holdings = [], compact = false }) {
     setChartData(null)
 
     try {
-      // Fetch SPY + top-5 in parallel
-      const [spyRaw, ...tickerRaws] = await Promise.all([
-        fetchYahooCloses('SPY',        period),
-        ...top5.map(h => fetchYahooCloses(h.ticker, period)),
-      ])
+      const data = await api.getPerformance(sessionId, period)
 
-      if (!spyRaw?.length) {
-        setError('Could not load S&P 500 data from Yahoo Finance.')
+      if (!data?.labels?.length) {
+        setError('No performance data returned.')
         return
       }
 
-      // Index SPY by date
-      const spyMap = Object.fromEntries(spyRaw.map(p => [p.date, p.close]))
-      const spyBase = spyRaw[0].close
-
-      // Index each ticker by date
-      const tickerMaps = tickerRaws.map((raw, i) => {
-        if (!raw?.length) return null
-        const map  = Object.fromEntries(raw.map(p => [p.date, p.close]))
-        const base = raw[0].close
-        return { map, base, weight: top5[i].weight }
-      })
-
-      // Use SPY dates as the canonical timeline
-      const dates = spyRaw.map(p => p.date)
-
-      // Build chart rows
-      let prevPortfolio = 100
-      const rows = dates.map(date => {
-        const spyNorm = spyBase > 0 ? (spyMap[date] / spyBase) * 100 : 100
-
-        // Weighted portfolio value
-        let portNorm  = 0
-        let portWeight = 0
-        tickerMaps.forEach(tm => {
-          if (!tm) return
-          const px = tm.map[date]
-          if (px != null && tm.base > 0) {
-            portNorm  += (px / tm.base) * 100 * tm.weight
-            portWeight += tm.weight
-          }
-        })
-
-        let portfolio = portWeight > 0.05
-          ? portNorm / portWeight  // already normalised to 100 per ticker
-          : prevPortfolio          // carry forward if data missing
-        prevPortfolio = portfolio
-
-        return { date, portfolio: +portfolio.toFixed(2), spy: +spyNorm.toFixed(2) }
-      })
+      // Zip labels + portfolio + spy into chart rows
+      const rows = data.labels.map((date, i) => ({
+        date,
+        portfolio: data.portfolio[i],
+        spy:       data.spy[i],
+      }))
 
       setChartData(rows)
     } catch (e) {
-      setError(e.message || 'Unexpected error.')
+      setError(e.message || 'Could not load performance data.')
     } finally {
       setLoading(false)
     }
-  }, [top5, period])
+  }, [sessionId, period])
 
   useEffect(() => { fetchData() }, [fetchData])
 

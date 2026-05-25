@@ -137,7 +137,7 @@ export default function DashboardPage() {
           {benchmark?.available && <BenchmarkChart benchmark={benchmark} />}
 
           {/* Portfolio vs S&P 500 line chart */}
-          <PerformanceChart holdings={holdings} />
+          <PerformanceChart sessionId={sessionId} />
 
           {/* Warnings */}
           {concentration?.warnings?.length > 0 && (
