@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.portfolio import Session as DBSession, Holding, AnalyticsCache
+from app.models.portfolio_account import Portfolio, PortfolioHolding, PortfolioAnalyticsCache, Transaction
+from app.models.user import User
+from app.services.auth.dependencies import get_current_user_optional
 from app.services.ingestion.pipeline import run_pipeline, run_text_pipeline, run_manual_pipeline
 from app.services.analytics.engine import run_analytics
 
@@ -42,6 +45,7 @@ async def upload_file(
     age: Optional[int] = Form(None),
     goals: Optional[str] = Form(""),
     db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided.")
@@ -58,29 +62,84 @@ async def upload_file(
         logger.exception(f"Unexpected pipeline error: {e}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while processing your file.")
 
-    return await _save_and_return(df, age, goals or "", file.filename, db)
+    return await _save_and_return(df, age, goals or "", file.filename, db, user)
 
 
 @router.post("/paste")
-async def paste_text(req: PasteRequest, db: Session = Depends(get_db)):
+async def paste_text(
+    req: PasteRequest,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional),
+):
     try:
         df = await run_text_pipeline(req.text)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return await _save_and_return(df, req.age, req.goals or "", "paste", db)
+    return await _save_and_return(df, req.age, req.goals or "", "paste", db, user)
 
 
 @router.post("/manual")
-async def manual_entry(req: ManualRequest, db: Session = Depends(get_db)):
+async def manual_entry(
+    req: ManualRequest,
+    db: Session = Depends(get_db),
+    user: Optional[User] = Depends(get_current_user_optional),
+):
     holdings = [h.model_dump() for h in req.holdings]
     try:
         df = await run_manual_pipeline(holdings)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-    return await _save_and_return(df, req.age, req.goals or "", "manual", db)
+    return await _save_and_return(df, req.age, req.goals or "", "manual", db, user)
 
 
-async def _save_and_return(df, age, goals, filename, db):
+def _save_account_portfolio(df, age, goals, filename, analytics, user: User, db):
+    """Additive: mirrors the guest Session/Holding/AnalyticsCache rows into an
+    account-owned Portfolio for logged-in users. Never runs for guests."""
+    portfolio_id = str(uuid.uuid4())
+    db.add(
+        Portfolio(
+            id=portfolio_id,
+            user_id=user.id,
+            name=filename or "My Portfolio",
+            age=age,
+            goals=goals,
+            total_value=analytics["summary"]["total_value"],
+            filename=filename,
+        )
+    )
+    for _, row in df.iterrows():
+        db.add(
+            PortfolioHolding(
+                portfolio_id=portfolio_id,
+                ticker=str(row.get("ticker", "")),
+                name=row.get("name"),
+                shares=row.get("shares"),
+                market_value=float(row.get("market_value", 0)),
+                weight=float(row.get("weight", 0)),
+                cost_basis=row.get("cost_basis"),
+                gain_loss=row.get("gain_loss"),
+                gain_loss_pct=row.get("gain_loss_pct"),
+                asset_class=row.get("asset_class"),
+                sector=row.get("sector"),
+                industry=row.get("industry"),
+                dividend_yield=row.get("dividend_yield"),
+                expense_ratio=row.get("expense_ratio"),
+                beta=row.get("beta"),
+                current_price=row.get("current_price"),
+            )
+        )
+    db.add(PortfolioAnalyticsCache(portfolio_id=portfolio_id, analytics_json=json.dumps(analytics)))
+    db.add(
+        Transaction(
+            portfolio_id=portfolio_id,
+            event_type="upload",
+            total_value_snapshot=analytics["summary"]["total_value"],
+        )
+    )
+    return portfolio_id
+
+
+async def _save_and_return(df, age, goals, filename, db, user: Optional[User] = None):
     session_id = str(uuid.uuid4())
     analytics = run_analytics(df, age, goals)
 
@@ -118,6 +177,13 @@ async def _save_and_return(df, age, goals, filename, db):
         analytics_json=json.dumps(analytics),
     )
     db.add(cache)
+
+    response = {"session_id": session_id, "analytics": analytics}
+
+    if user is not None:
+        portfolio_id = _save_account_portfolio(df, age, goals, filename, analytics, user, db)
+        response["portfolio_id"] = portfolio_id
+
     db.commit()
 
-    return JSONResponse({"session_id": session_id, "analytics": analytics})
+    return JSONResponse(response)

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -6,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db
-from app.routers import upload, portfolio, chat, snapshot, market
+from app.routers import upload, portfolio, chat, snapshot, market, auth, portfolios, screener
+from app.services.market.price_refresh import price_refresh_loop
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,8 +22,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting PortfolioLens API...")
     init_db()
     logger.info("Database initialized.")
+    refresh_task = asyncio.create_task(price_refresh_loop())
     yield
     logger.info("Shutting down.")
+    refresh_task.cancel()
 
 
 app = FastAPI(
@@ -44,6 +48,9 @@ app.include_router(portfolio.router)
 app.include_router(chat.router)
 app.include_router(snapshot.router)
 app.include_router(market.router)
+app.include_router(auth.router)
+app.include_router(portfolios.router)
+app.include_router(screener.router)
 
 
 @app.get("/health")

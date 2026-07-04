@@ -50,7 +50,7 @@ def run_analytics(df: pd.DataFrame, age: int | None = None, goals: str = "") -> 
     total_holdings = len(df)
     unique_sectors = int(df["sector"].nunique()) if "sector" in df.columns else 0
 
-    return {
+    result = {
         "summary": {
             "total_value": total_value,
             "total_holdings": total_holdings,
@@ -73,6 +73,7 @@ def run_analytics(df: pd.DataFrame, age: int | None = None, goals: str = "") -> 
             "or a recommendation to buy or sell any security."
         ),
     }
+    return _deep_clean_nans(result)
 
 
 def _compute_breakdown(df: pd.DataFrame, column: str) -> list[dict]:
@@ -140,3 +141,18 @@ def _clean_nans(record: dict) -> dict:
         else:
             cleaned[k] = v
     return cleaned
+
+
+def _deep_clean_nans(value):
+    """Recursively replace NaN/inf floats with None anywhere in a nested
+    dict/list structure, so the full analytics response is always valid
+    JSON regardless of which sub-module produced the stray NaN."""
+    import math
+
+    if isinstance(value, float):
+        return None if (math.isnan(value) or math.isinf(value)) else value
+    if isinstance(value, dict):
+        return {k: _deep_clean_nans(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_deep_clean_nans(v) for v in value]
+    return value

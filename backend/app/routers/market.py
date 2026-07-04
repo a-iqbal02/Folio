@@ -3,85 +3,16 @@ Market data router — public endpoints (no session required).
 Powers the ETF comparison chart.
 """
 import logging
-from datetime import datetime, timezone, timedelta
 
-import httpx
 import pandas as pd
 from fastapi import APIRouter, HTTPException
+
+from app.services.market.price_fetch import fetch_closes, PERIOD_DAYS as _PERIOD_DAYS
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/market", tags=["market"])
 
 _VALID_PERIODS = {"1mo", "3mo", "6mo", "1y", "2y", "3y", "5y"}
-_PERIOD_DAYS = {
-    "1mo":  35,
-    "3mo":  95,
-    "6mo":  185,
-    "1y":   370,
-    "2y":   740,
-    "3y":   1100,
-    "5y":   1830,
-}
-
-
-def _fetch_stooq(ticker: str, days: int) -> "pd.Series | None":
-    """
-    Fetch daily closing prices from Stooq.com.
-    Free, no API key, doesn't block server IPs.
-    Returns pd.Series(float, DatetimeIndex) sorted ascending, or None.
-    """
-    end_dt   = datetime.now(tz=timezone.utc)
-    start_dt = end_dt - timedelta(days=days)
-    sym      = f"{ticker.lower()}.us"
-    d1       = start_dt.strftime("%Y%m%d")
-    d2       = end_dt.strftime("%Y%m%d")
-    url      = f"https://stooq.com/q/d/l/?s={sym}&d1={d1}&d2={d2}&i=d"
-
-    try:
-        resp = httpx.get(
-            url, timeout=20.0, follow_redirects=True,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; bot)"},
-        )
-        resp.raise_for_status()
-
-        text = resp.text.strip()
-        if len(text) < 30:
-            return None
-
-        lines = text.split("\n")
-        first = lines[0].lower()
-        if "no data" in first or "exceeded" in first or "date" not in first:
-            logger.warning(f"stooq/compare: bad header for {ticker}: {lines[0][:60]}")
-            return None
-
-        records = []
-        for line in lines[1:]:
-            parts = line.strip().split(",")
-            if len(parts) < 5:
-                continue
-            try:
-                records.append((parts[0].strip(), float(parts[4].strip())))
-            except (ValueError, IndexError):
-                continue
-
-        if not records:
-            return None
-
-        records.sort(key=lambda x: x[0])
-        s = pd.Series(
-            [r[1] for r in records],
-            index=pd.DatetimeIndex([r[0] for r in records]),
-            name=ticker,
-            dtype=float,
-        )
-        return s.dropna()
-
-    except httpx.HTTPStatusError as exc:
-        logger.warning(f"stooq/compare: HTTP {exc.response.status_code} for {ticker}")
-        return None
-    except Exception as exc:
-        logger.warning(f"stooq/compare: failed for {ticker}: {exc}")
-        return None
 
 
 @router.get("/compare")
@@ -108,7 +39,7 @@ def compare_tickers(tickers: str, period: str = "1y"):
     raw_series: dict[str, pd.Series] = {}
 
     def _fetch_one(t):
-        return t, _fetch_stooq(t, days)
+        return t, fetch_closes(t, days)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         for t, s in pool.map(_fetch_one, ticker_list):

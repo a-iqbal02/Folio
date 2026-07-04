@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator, Menu, ChevronRight, GitCompare } from 'lucide-react'
+import { Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator, Menu, ChevronRight, GitCompare, User, LogOut, LogIn } from 'lucide-react'
 import clsx from 'clsx'
 import { useSavedSessions } from '../../hooks/useSession'
+import { useAuth } from '../../hooks/useAuth'
 import FolioLogo from './FolioLogo'
 
 const NAV = [
@@ -17,6 +18,50 @@ const NAV = [
 function fmtCurrency(v) {
   if (!v) return null
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v)
+}
+
+function AuthSection({ onNavigate }) {
+  const nav = useNavigate()
+  const { user, logout } = useAuth()
+
+  if (user) {
+    return (
+      <div className="px-3 py-3 border-b border-slate-800 space-y-0.5">
+        <button
+          onClick={() => { nav('/account'); onNavigate?.() }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+        >
+          <div className="bg-blue-600/20 text-blue-400 rounded-full p-1.5 shrink-0">
+            <User className="w-3.5 h-3.5" />
+          </div>
+          <span className="truncate">{user.email}</span>
+        </button>
+        <button
+          onClick={() => { logout(); onNavigate?.() }}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-colors"
+        >
+          <LogOut className="w-3.5 h-3.5" /> Log out
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="px-3 py-3 border-b border-slate-800 flex gap-2">
+      <button
+        onClick={() => { nav('/login'); onNavigate?.() }}
+        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 transition-colors"
+      >
+        <LogIn className="w-3.5 h-3.5" /> Log in
+      </button>
+      <button
+        onClick={() => { nav('/register'); onNavigate?.() }}
+        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+      >
+        Sign up
+      </button>
+    </div>
+  )
 }
 
 export default function Layout() {
@@ -69,6 +114,8 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        <AuthSection />
 
         {/* Recent sessions */}
         {sessions.length > 0 && (
@@ -178,6 +225,8 @@ export default function Layout() {
                 </NavLink>
               ))}
             </nav>
+
+            <AuthSection onNavigate={() => setMobileMenuOpen(false)} />
 
             {/* Recent on mobile */}
             {sessions.length > 0 && (

@@ -5,8 +5,25 @@ const API_ROOT = import.meta.env.VITE_API_URL
   : ''
 const BASE = `${API_ROOT}/api`
 
+export const AUTH_TOKEN_KEY = 'folio_auth_token'
+
+export function getAuthToken() {
+  try { return localStorage.getItem(AUTH_TOKEN_KEY) } catch (_) { return null }
+}
+
+export function setAuthToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_TOKEN_KEY, token)
+    else localStorage.removeItem(AUTH_TOKEN_KEY)
+  } catch (_) {}
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, options)
+  const token = getAuthToken()
+  const headers = { ...(options.headers || {}) }
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers })
   if (!res.ok) {
     let detail = `HTTP ${res.status}`
     try { detail = (await res.json()).detail || detail } catch (_) {}
@@ -64,6 +81,67 @@ export const api = {
     const res = await request(
       `/market/compare?tickers=${encodeURIComponent(tickers)}&period=${period}`
     )
+    return res.json()
+  },
+
+  async listScreenerEtfs() {
+    const res = await request('/screener/etfs')
+    return res.json()
+  },
+
+  async register(email, password) {
+    const res = await request('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    return res.json()
+  },
+
+  async login(email, password) {
+    const res = await request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    return res.json()
+  },
+
+  async getMe() {
+    const res = await request('/auth/me')
+    return res.json()
+  },
+
+  async listPortfolios() {
+    const res = await request('/portfolios')
+    return res.json()
+  },
+
+  async getAccountPortfolio(portfolioId) {
+    const res = await request(`/portfolios/${portfolioId}`)
+    return res.json()
+  },
+
+  async claimPortfolio(sessionId, name) {
+    const res = await request('/portfolios/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, name }),
+    })
+    return res.json()
+  },
+
+  async renamePortfolio(portfolioId, name) {
+    const res = await request(`/portfolios/${portfolioId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    return res.json()
+  },
+
+  async deletePortfolio(portfolioId) {
+    const res = await request(`/portfolios/${portfolioId}`, { method: 'DELETE' })
     return res.json()
   },
 

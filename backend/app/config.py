@@ -13,7 +13,21 @@ class Settings(BaseSettings):
     ticker_concurrency: int = 5
     tesseract_cmd: str = ""
 
+    # Auth
+    secret_key: str = "dev-secret-key-change-in-production"
+    access_token_expire_minutes: int = 60 * 24 * 14  # 14 days
+    jwt_algorithm: str = "HS256"
+
     model_config = {"env_file": ".env", "case_sensitive": False}
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        # Railway/Heroku-style URLs use the legacy "postgres://" scheme,
+        # which SQLAlchemy 2.x's psycopg2 dialect rejects.
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
 
     @property
     def origins_list(self) -> List[str]:

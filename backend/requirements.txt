@@ -9,6 +9,13 @@ pydantic-settings>=2.4.0
 # Database
 sqlalchemy>=2.0.35
 aiosqlite>=0.20.0
+psycopg2-binary>=2.9.9
+alembic>=1.13.0
+
+# Auth
+PyJWT>=2.9.0
+bcrypt>=4.1.2
+email-validator>=2.2.0
 
 # Data processing
 pandas>=2.2.0

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Loader2, AlertCircle, ArrowLeft, LayoutDashboard, Sparkles } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowLeft, LayoutDashboard, Sparkles, Save, Check } from 'lucide-react'
 import { api } from '../utils/api'
 import { useSavedSessions } from '../hooks/useSession'
+import { useAuth } from '../hooks/useAuth'
 
 import SummaryBar from '../components/dashboard/SummaryBar'
 import ScoreCards from '../components/dashboard/ScoreCards'
@@ -30,6 +31,18 @@ export default function DashboardPage() {
   // Default to Simple view; Advanced requires explicit ?view=advanced or toggle
   const [view, setView] = useState(searchParams.get('view') === 'advanced' ? 'advanced' : 'simple')
   const { saveSession } = useSavedSessions()
+  const { user } = useAuth()
+  const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
+
+  async function handleSaveToAccount() {
+    setSaveState('saving')
+    try {
+      await api.claimPortfolio(sessionId, location.state?.filename)
+      setSaveState('saved')
+    } catch (e) {
+      setSaveState('error')
+    }
+  }
 
   useEffect(() => {
     if (analytics) {
@@ -101,7 +114,19 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-2">
+          {user && (
+            <button
+              onClick={handleSaveToAccount}
+              disabled={saveState === 'saving' || saveState === 'saved'}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:border-slate-600 disabled:opacity-70 transition-colors"
+            >
+              {saveState === 'saving' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {saveState === 'saved' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+              {saveState !== 'saving' && saveState !== 'saved' && <Save className="w-3.5 h-3.5" />}
+              {saveState === 'saved' ? 'Saved to account' : saveState === 'error' ? 'Retry save' : 'Save to my account'}
+            </button>
+          )}
           <ExportBar sessionId={sessionId} />
         </div>
       </div>

@@ -37,6 +37,12 @@ def get_db():
 
 
 def init_db():
-    """Create all tables. Called on startup."""
-    from app.models import portfolio  # noqa: F401 — import triggers table registration
+    """Create all tables. Called on startup.
+
+    This is a dev-convenience fallback (used for SQLite); in production against
+    Postgres, schema changes should go through Alembic migrations instead,
+    since create_all() only creates missing tables and never alters existing
+    ones.
+    """
+    import app.models  # noqa: F401 — import triggers table registration
     Base.metadata.create_all(bind=engine)
