@@ -7,6 +7,7 @@ from app.models.portfolio_account import (
     Transaction,
 )
 from app.models.etf_price_cache import EtfPriceCache
+from app.models.risk_profile import RiskProfile
 
 __all__ = [
     "Session",
@@ -18,4 +19,5 @@ __all__ = [
     "PortfolioAnalyticsCache",
     "Transaction",
     "EtfPriceCache",
+    "RiskProfile",
 ]

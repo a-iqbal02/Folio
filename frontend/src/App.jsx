@@ -10,6 +10,7 @@ import ETFComparePage from './pages/ETFComparePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AccountPage from './pages/AccountPage'
+import RiskAssessmentPage from './pages/RiskAssessmentPage'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
         <Route path="account" element={<AccountPage />} />
+        <Route path="risk-assessment" element={<RiskAssessmentPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

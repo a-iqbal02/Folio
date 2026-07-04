@@ -89,6 +89,25 @@ export const api = {
     return res.json()
   },
 
+  async getRiskQuestions() {
+    const res = await request('/risk/questions')
+    return res.json()
+  },
+
+  async submitRiskAnswers(answers) {
+    const res = await request('/risk/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers }),
+    })
+    return res.json()
+  },
+
+  async getMyRiskProfile() {
+    const res = await request('/risk/me')
+    return res.json()
+  },
+
   async register(email, password) {
     const res = await request('/auth/register', {
       method: 'POST',

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
-import { Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator, Menu, ChevronRight, GitCompare, User, LogOut, LogIn } from 'lucide-react'
+import { Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator, Menu, ChevronRight, GitCompare, User, LogOut, LogIn, ShieldQuestion } from 'lucide-react'
 import clsx from 'clsx'
 import { useSavedSessions } from '../../hooks/useSession'
 import { useAuth } from '../../hooks/useAuth'
@@ -9,7 +9,8 @@ import FolioLogo from './FolioLogo'
 const NAV = [
   { to: '/',                  label: 'Home',          icon: Home },
   { to: '/upload',            label: 'Upload',        icon: Upload },
-  { to: '/etf-explorer',      label: 'ETF Explorer',  icon: TrendingUp, badge: 'New' },
+  { to: '/etf-explorer',      label: 'ETF Explorer',  icon: TrendingUp },
+  { to: '/risk-assessment',   label: 'Risk Assessment', icon: ShieldQuestion, badge: 'New' },
   { to: '/etf-guide',         label: 'ETF Guide',     icon: BookOpen },
   { to: '/growth-calculator', label: 'Growth Calc',   icon: Calculator },
   { to: '/etf-compare',       label: 'ETF Compare',   icon: GitCompare },
