@@ -1,4 +1,4 @@
-# PortfolioLens
+# Folio
 
 A production-grade portfolio analysis web app that ingests holdings from virtually any source — CSV, Excel, PDF, images, or pasted text — and delivers educational insights on concentration, risk, diversification, sector allocation, and ETF alternatives.
 
