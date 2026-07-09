@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db
-from app.routers import upload, portfolio, chat, snapshot, market, auth, portfolios, screener, risk
+from app.routers import upload, portfolio, chat, snapshot, market, auth, portfolios, screener, risk, model_portfolios
 from app.services.market.price_refresh import price_refresh_loop
 
 logging.basicConfig(
@@ -52,6 +52,7 @@ app.include_router(auth.router)
 app.include_router(portfolios.router)
 app.include_router(screener.router)
 app.include_router(risk.router)
+app.include_router(model_portfolios.router)
 
 
 @app.get("/health")

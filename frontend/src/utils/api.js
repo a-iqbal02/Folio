@@ -108,6 +108,21 @@ export const api = {
     return res.json()
   },
 
+  async listModelPortfolios() {
+    const res = await request('/model-portfolios')
+    return res.json()
+  },
+
+  async getModelPortfolio(id) {
+    const res = await request(`/model-portfolios/${id}`)
+    return res.json()
+  },
+
+  async getModelPortfolioPerformance(id, period = '3y') {
+    const res = await request(`/model-portfolios/${id}/performance?period=${period}`)
+    return res.json()
+  },
+
   async register(email, password) {
     const res = await request('/auth/register', {
       method: 'POST',
