@@ -37,12 +37,16 @@ def get_db():
 
 
 def init_db():
-    """Create all tables. Called on startup.
-
-    This is a dev-convenience fallback (used for SQLite); in production against
-    Postgres, schema changes should go through Alembic migrations instead,
-    since create_all() only creates missing tables and never alters existing
-    ones.
+    """Run Alembic migrations to bring the schema up to date. Called on
+    startup for both local dev (SQLite) and production (Postgres) — this
+    replaced a bare Base.metadata.create_all() fallback, which only ever
+    creates missing tables and never alters existing ones, so it couldn't
+    apply real schema changes once a database had data in it.
     """
-    import app.models  # noqa: F401 — import triggers table registration
-    Base.metadata.create_all(bind=engine)
+    from pathlib import Path
+    from alembic.config import Config
+    from alembic import command
+
+    backend_dir = Path(__file__).resolve().parent.parent
+    alembic_cfg = Config(str(backend_dir / "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
