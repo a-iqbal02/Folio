@@ -1,8 +1,5 @@
 export default function FolioLogo({ size = 40, showWordmark = true, showTagline = false }) {
-  const r = size / 2
   // All coordinates scale relative to size
-  const s = size / 92  // base design is 92px
-
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: showWordmark ? 10 : 0, position: 'relative' }}>
       <svg
@@ -13,51 +10,30 @@ export default function FolioLogo({ size = 40, showWordmark = true, showTagline 
         xmlns="http://www.w3.org/2000/svg"
         style={{ flexShrink: 0 }}
       >
-        {/* Circle background */}
-        <circle cx="46" cy="46" r="46" fill="#0f1e3c"/>
+        {/* Ring — stroke only, no fill, blends with whatever surface it sits on */}
+        <circle cx="46" cy="46" r="38" stroke="#3b82f6" strokeWidth="4"/>
 
-        {/* F: 3 horizontal bars, left side, decreasing width */}
-        <rect x="10" y="20" width="34" height="11" rx="3" fill="#3b82f6"/>
-        <rect x="10" y="37" width="24" height="11" rx="3" fill="#60a5fa"/>
-        <rect x="10" y="54" width="15" height="11" rx="3" fill="#93c5fd"/>
+        {/* Data rows, upper-left */}
+        <rect x="24" y="29" width="19" height="4.5" rx="2.25" fill="#60a5fa"/>
+        <rect x="24" y="38" width="14" height="4.5" rx="2.25" fill="#60a5fa" opacity="0.75"/>
+        <rect x="24" y="47" width="9"  height="4.5" rx="2.25" fill="#60a5fa" opacity="0.55"/>
 
-        {/* O: pie donut, right side */}
-        <path d="M50,46 L50,18 A28,28 0 0,1 78,46 Z" fill="#2563eb"/>
-        <path d="M50,46 L78,46 A28,28 0 0,1 60,72 Z" fill="#60a5fa" opacity="0.9"/>
-        <path d="M50,46 L60,72 A28,28 0 0,1 50,18 Z" fill="#1d4ed8" opacity="0.85"/>
-        {/* Donut hole */}
-        <circle cx="50" cy="46" r="11" fill="#0f1e3c"/>
+        {/* Ascending bars, lower-right */}
+        <rect x="47" y="58" width="6" height="10" rx="1.5" fill="#3b82f6"/>
+        <rect x="56" y="52" width="6" height="16" rx="1.5" fill="#3b82f6"/>
+        <rect x="65" y="43" width="6" height="25" rx="1.5" fill="#3b82f6"/>
 
-        {/* Subtle divider */}
-        <line x1="46" y1="10" x2="46" y2="82" stroke="white" strokeWidth="0.8" opacity="0.12"/>
-
-        {/* Amber dot at top-right of O — arc starts here */}
-        <circle cx="75" cy="20" r="5" fill="#f59e0b"/>
+        {/* Trend line + end dot */}
+        <path d="M47,60 L59,49 L71,35" stroke="#93c5fd" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        <circle cx="71" cy="35" r="4" fill="#93c5fd"/>
       </svg>
 
       {showWordmark && (
         <div style={{ position: 'relative' }}>
-          {/* Amber arc from O dot over to i dot — drawn in absolute positioned SVG */}
-          <svg
-            style={{ position: 'absolute', top: -18, left: -8, pointerEvents: 'none', overflow: 'visible' }}
-            width="120"
-            height="30"
-            viewBox="0 0 120 30"
-          >
-            {/* Arc from left (where O dot exits circle) curving to i dot position */}
-            <path
-              d="M2,22 Q48,-4 88,18"
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-            {/* i dot at end of arc */}
-            <circle cx="88" cy="18" r="4.5" fill="#f59e0b"/>
-          </svg>
-
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{
+              display: 'flex',
+              alignItems: 'flex-start',
               fontSize: size * 0.52,
               fontWeight: 700,
               color: 'white',
@@ -66,6 +42,15 @@ export default function FolioLogo({ size = 40, showWordmark = true, showTagline 
               fontFamily: 'Inter, system-ui, sans-serif',
             }}>
               folio
+              <span style={{
+                display: 'inline-block',
+                width: size * 0.09,
+                height: size * 0.09,
+                borderRadius: '50%',
+                background: '#3b82f6',
+                marginLeft: size * 0.04,
+                marginTop: size * 0.02,
+              }} />
             </span>
             {showTagline && (
               <span style={{

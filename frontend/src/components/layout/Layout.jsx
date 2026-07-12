@@ -116,7 +116,7 @@ function AuthSection({ collapsed, onNavigate }) {
   const go = (to) => { nav(to); onNavigate?.() }
   const doLogout = () => { logout(); onNavigate?.() }
 
-  const btnBase = 'flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
+  const btnBase = 'flex items-center justify-center rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500'
 
   if (user) {
     if (collapsed) {
@@ -135,7 +135,7 @@ function AuthSection({ collapsed, onNavigate }) {
       <div className="px-3 py-3 border-t border-slate-800 space-y-0.5">
         <button
           onClick={() => go('/account')}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <div className="bg-blue-600/20 text-blue-400 rounded-full p-1.5 shrink-0">
             <User className="w-3.5 h-3.5" />
@@ -144,7 +144,7 @@ function AuthSection({ collapsed, onNavigate }) {
         </button>
         <button
           onClick={doLogout}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-500 hover:text-red-400 hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <LogOut className="w-3.5 h-3.5" /> Log out
         </button>
@@ -169,13 +169,13 @@ function AuthSection({ collapsed, onNavigate }) {
     <div className="px-3 py-3 border-t border-slate-800 flex gap-2">
       <button
         onClick={() => go('/login')}
-        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         <LogIn className="w-3.5 h-3.5" /> Log in
       </button>
       <button
         onClick={() => go('/register')}
-        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
         Sign up
       </button>
@@ -215,11 +215,11 @@ export default function Layout() {
       <aside
         className={clsx(
           'hidden md:flex flex-col bg-slate-900 border-r border-slate-800 shrink-0 sticky top-0 h-screen transition-[width] duration-150',
-          collapsed ? 'w-16' : 'w-56'
+          collapsed ? 'w-16' : 'w-52'
         )}
       >
-        <div className={clsx('py-4 border-b border-slate-800 flex items-center', collapsed ? 'justify-center px-2' : 'px-4')}>
-          <FolioLogo size={28} showWordmark={!collapsed} showTagline={false} />
+        <div className={clsx('py-3.5 border-b border-slate-800 flex items-center', collapsed ? 'justify-center px-2' : 'px-4')}>
+          <FolioLogo size={26} showWordmark={!collapsed} showTagline={false} />
         </div>
 
         <button
@@ -227,7 +227,7 @@ export default function Layout() {
           aria-expanded={!collapsed}
           aria-controls="sidebar-nav"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="mx-2 mt-2 flex items-center justify-center gap-2 px-3 py-2 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="mx-2 mt-2 flex items-center justify-center gap-2 px-3 py-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           {collapsed ? <ChevronsRight className="w-4 h-4" /> : <><ChevronsLeft className="w-4 h-4" /> <span className="text-xs font-medium">Collapse</span></>}
         </button>
@@ -246,7 +246,7 @@ export default function Layout() {
               {sessions.map((s) => (
                 <div
                   key={s.sessionId}
-                  className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+                  className="group flex items-center gap-2 px-3 py-2.5 rounded-md hover:bg-slate-800 cursor-pointer transition-colors"
                   onClick={() => editingId !== s.sessionId && nav(`/dashboard/${s.sessionId}`)}
                 >
                   <div className="bg-slate-700 rounded p-1 shrink-0">
@@ -305,7 +305,7 @@ export default function Layout() {
           onClick={() => setMobileMenuOpen(o => !o)}
           aria-label="Open menu"
           aria-expanded={mobileMenuOpen}
-          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -341,7 +341,7 @@ export default function Layout() {
                 {sessions.map((s) => (
                   <div
                     key={s.sessionId}
-                    className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors"
+                    className="group flex items-center gap-2 px-3 py-2.5 rounded-md hover:bg-slate-800 cursor-pointer transition-colors"
                     onClick={() => { nav(`/dashboard/${s.sessionId}`); setMobileMenuOpen(false) }}
                   >
                     <div className="bg-slate-700 rounded p-1 shrink-0"><DollarSign className="w-3 h-3 text-slate-400" /></div>
@@ -374,7 +374,7 @@ export default function Layout() {
           <NavLink
             key={to} to={to} end={to === '/'}
             className={({ isActive }) =>
-              clsx('flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+              clsx('flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
                 isActive ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'
               )
             }
