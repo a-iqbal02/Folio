@@ -1,12 +1,19 @@
-import { useState, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Upload, FileText, ClipboardPaste, Loader2, AlertCircle,
   CheckCircle2, X, Plus, Trash2, TableProperties, Sparkles,
-  ArrowRight, Info
+  ArrowRight, Info, FileBarChart2, Lock, ShieldCheck, KeyRound
 } from 'lucide-react'
 import clsx from 'clsx'
 import { api } from '../utils/api'
+
+const TRUST_INDICATORS = [
+  { icon: Lock,        text: 'Files processed in-memory, never stored' },
+  { icon: ShieldCheck, text: 'Educational analysis, not financial advice' },
+  { icon: KeyRound,    text: 'No brokerage login required' },
+  { icon: Trash2,      text: 'Delete your data anytime' },
+]
 
 const ACCEPTED = '.csv,.xlsx,.xls,.pdf,.png,.jpg,.jpeg,.webp,.txt'
 const MAX_MB = 50
@@ -20,9 +27,10 @@ const TABS = [
 
 export default function UploadPage() {
   const nav = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // shared
-  const [tab, setTab]       = useState('file')
+  const [tab, setTab]       = useState(() => searchParams.get('tab') || 'file')
   const [age, setAge]       = useState('')
   const [goals, setGoals]   = useState('')
   const [loading, setLoading] = useState(false)
@@ -104,6 +112,33 @@ export default function UploadPage() {
     }
   }
 
+  // ── try sample portfolio ─────────────────────────────────────────────────
+  async function handleTrySample() {
+    setError(null); setParseFailFallback(false); setLoading(true)
+    try {
+      const res = await fetch('/sample-portfolio.csv')
+      if (!res.ok) throw new Error('Could not load the sample portfolio.')
+      const blob = await res.blob()
+      const sampleFile = new File([blob], 'sample_portfolio.csv', { type: 'text/csv' })
+      const ageVal = age ? parseInt(age) : null
+      const data = await api.uploadFile(sampleFile, ageVal, goals)
+      nav(`/dashboard/${data.session_id}`, {
+        state: { analytics: data.analytics, filename: 'Sample Portfolio' }
+      })
+    } catch (err) {
+      setError(err.message || 'Could not load the sample portfolio.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (searchParams.get('sample') === '1') {
+      handleTrySample()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function buildHoldings() {
     const holdings = rows
       .filter(r => r.ticker.trim())
@@ -161,6 +196,18 @@ export default function UploadPage() {
             <span className={clsx('text-xs font-normal hidden sm:block', tab === id ? 'text-blue-200' : 'text-slate-600')}>{desc}</span>
           </button>
         ))}
+      </div>
+
+      {/* ── Sample portfolio shortcut ── */}
+      <div className="flex items-center justify-between mb-6 -mt-2">
+        <p className="text-xs text-slate-600">Or skip the upload —</p>
+        <button
+          onClick={handleTrySample}
+          disabled={loading}
+          className="flex items-center gap-1.5 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+        >
+          <FileBarChart2 className="w-3.5 h-3.5" /> Try a sample portfolio <ArrowRight className="w-3 h-3" />
+        </button>
       </div>
 
       {/* ── File tab ── */}
@@ -373,9 +420,15 @@ export default function UploadPage() {
         </button>
       </div>
 
-      <p className="mt-4 text-slate-600 text-xs text-center">
-        Your data is processed in-memory and never shared with third parties.
-      </p>
+      {/* ── Trust indicators ── */}
+      <div className="mt-6 pt-5 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs text-slate-500">
+        {TRUST_INDICATORS.map(({ icon: Icon, text }) => (
+          <div key={text} className="flex items-start gap-2">
+            <Icon className="w-3.5 h-3.5 text-slate-600 mt-0.5 shrink-0" aria-hidden="true" />
+            {text}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

@@ -1,74 +1,74 @@
 import { useNavigate } from 'react-router-dom'
-import { Upload, PenSquare, ShieldCheck, BarChart3, TrendingUp, Layers } from 'lucide-react'
-import FolioLogo from '../components/layout/FolioLogo'
+import { Upload, ShieldCheck, BarChart3, Layers } from 'lucide-react'
+import DashboardPreview from '../components/landing/DashboardPreview'
 
-const FEATURES = [
-  { icon: ShieldCheck, title: 'Concentration Analysis', desc: 'HHI scoring, per-position warnings, and sector overlap detection.' },
-  { icon: BarChart3,   title: 'Benchmark Comparison',  desc: 'See how your sector weights compare to the S&P 500.' },
-  { icon: TrendingUp,  title: 'Risk Scoring',           desc: 'Weighted-beta risk score calibrated to your actual holdings.' },
-  { icon: Layers,      title: 'ETF Insights',           desc: 'Detect redundant ETF overlap and consolidation opportunities.' },
+const CAPABILITIES = [
+  { icon: ShieldCheck, text: 'Concentration scoring (HHI) with per-position warnings' },
+  { icon: BarChart3,   text: 'Sector weights benchmarked against the S&P 500' },
+  { icon: Layers,      text: 'ETF overlap detection across your full holdings list' },
 ]
 
 export default function LandingPage() {
   const nav = useNavigate()
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24">
-        {/* Large logo mark */}
-        <div className="mb-8 flex justify-center">
-          <FolioLogo size={130} showWordmark={true} showTagline={true} />
-        </div>
+    <div className="max-w-7xl mx-auto px-6 py-10 lg:py-14">
+      <section className="grid grid-cols-1 lg:grid-cols-[440px_1fr] gap-10 items-start">
+        {/* Intro */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-blue-400/80 mb-3">
+            Portfolio Analysis
+          </p>
+          <h1 className="text-3xl md:text-[2.25rem] font-bold text-white leading-[1.15] mb-4">
+            See what's actually in your portfolio.
+          </h1>
+          <p className="text-slate-400 text-base leading-relaxed mb-6 max-w-md">
+            Folio analyzes concentration, risk, sector exposure, benchmark performance, and ETF
+            overlap — from a brokerage export, pasted holdings, or manual entry. No account
+            required to try it.
+          </p>
 
-        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-6">
-          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
-          <span className="text-blue-400 text-xs font-semibold tracking-wide uppercase">Educational Analysis Tool</span>
-        </div>
-
-        <h1 className="text-5xl md:text-6xl font-bold text-white leading-tight max-w-3xl">
-          Understand what's inside<br />
-          <span className="text-blue-400">your portfolio</span>
-        </h1>
-        <p className="mt-5 text-slate-400 text-lg max-w-xl leading-relaxed">
-          Upload any brokerage export and get instant analysis on concentration,
-          risk exposure, sector allocation, and ETF alternatives.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 mt-9">
-          <button onClick={() => nav('/upload')} className="btn-primary flex items-center gap-2 text-base px-7 py-3">
-            <Upload className="w-4 h-4" /> Upload a File
+          <div className="flex flex-wrap gap-3 mb-3">
+            <button
+              onClick={() => nav('/upload')}
+              className="btn-primary flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            >
+              <Upload className="w-4 h-4" /> Upload portfolio
+            </button>
+            <button
+              onClick={() => nav('/upload?sample=1')}
+              className="btn-ghost flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            >
+              Try sample portfolio
+            </button>
+          </div>
+          <button
+            onClick={() => nav('/upload?tab=manual')}
+            className="text-sm text-slate-500 hover:text-slate-300 underline underline-offset-2 decoration-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+          >
+            or enter holdings manually
           </button>
-          <button onClick={() => nav('/manual')} className="btn-ghost flex items-center gap-2 text-base px-7 py-3">
-            <PenSquare className="w-4 h-4" /> Enter Manually
-          </button>
-        </div>
-        <p className="mt-5 text-slate-600 text-xs">
-          Supports CSV · Excel · PDF · Images · Paste · Manual entry
-        </p>
-      </section>
 
-      {/* Feature cards */}
-      <section className="border-t border-slate-800 px-6 py-16">
-        <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="card hover:border-slate-700 transition-colors">
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-500/10 rounded-lg p-2.5 shrink-0">
-                  <Icon className="text-blue-400 w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-200 mb-1">{title}</h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+          <ul className="mt-10 space-y-3 border-t border-slate-800 pt-6">
+            {CAPABILITIES.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3 text-sm text-slate-400">
+                <Icon className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" aria-hidden="true" />
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
+
+        {/* Live product preview */}
+        <DashboardPreview />
       </section>
 
       {/* Disclaimer */}
-      <div className="border-t border-slate-800 px-6 py-4 text-center">
+      <div className="border-t border-slate-800 mt-14 pt-5 text-center">
         <p className="text-slate-600 text-xs max-w-xl mx-auto">
-          Folio is an educational tool. Nothing displayed constitutes financial advice, a recommendation to buy or sell, or investment guidance. Always consult a licensed financial advisor.
+          Folio is an educational tool. Nothing displayed constitutes financial advice, a
+          recommendation to buy or sell, or investment guidance. Always consult a licensed
+          financial advisor.
         </p>
       </div>
     </div>

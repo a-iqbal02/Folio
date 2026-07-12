@@ -19,7 +19,7 @@ export default function App() {
       <Route path="/" element={<Layout />}>
         <Route index element={<LandingPage />} />
         <Route path="upload" element={<UploadPage />} />
-        <Route path="manual" element={<Navigate to="/upload" replace />} />
+        <Route path="manual" element={<Navigate to="/upload?tab=manual" replace />} />
         <Route path="etf-explorer" element={<ETFExplorerPage />} />
         <Route path="etf-guide" element={<ETFEducationPage />} />
         <Route path="growth-calculator" element={<GrowthCalculatorPage />} />
