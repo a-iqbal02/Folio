@@ -7,6 +7,7 @@ import ETFExplorerPage from './pages/ETFExplorerPage'
 import ETFEducationPage from './pages/ETFEducationPage'
 import GrowthCalculatorPage from './pages/GrowthCalculatorPage'
 import ETFComparePage from './pages/ETFComparePage'
+import StockLookupPage from './pages/StockLookupPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AccountPage from './pages/AccountPage'
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="etf-guide" element={<ETFEducationPage />} />
         <Route path="growth-calculator" element={<GrowthCalculatorPage />} />
         <Route path="etf-compare" element={<ETFComparePage />} />
+        <Route path="lookup" element={<StockLookupPage />} />
         <Route path="dashboard/:sessionId" element={<DashboardPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />

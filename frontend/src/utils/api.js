@@ -18,18 +18,40 @@ export function setAuthToken(token) {
   } catch (_) {}
 }
 
+const REQUEST_TIMEOUT_MS = 25000
+
 async function request(path, options = {}) {
   const token = getAuthToken()
   const headers = { ...(options.headers || {}) }
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers })
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`
-    try { detail = (await res.json()).detail || detail } catch (_) {}
-    throw new Error(detail)
+  // Callers that need their own cancellation (e.g. aborting a stale request
+  // on unmount) pass options.signal — only install a timeout-based one when
+  // they haven't, so we don't fight an existing AbortController.
+  let timeoutId
+  let signal = options.signal
+  if (!signal) {
+    const controller = new AbortController()
+    timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+    signal = controller.signal
   }
-  return res
+
+  try {
+    const res = await fetch(`${BASE}${path}`, { ...options, headers, signal })
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`
+      try { detail = (await res.json()).detail || detail } catch (_) {}
+      throw new Error(detail)
+    }
+    return res
+  } catch (err) {
+    if (err.name === 'AbortError' && !options.signal) {
+      throw new Error('The request took too long and timed out. Please try again.')
+    }
+    throw err
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
 }
 
 export const api = {
@@ -80,6 +102,13 @@ export const api = {
   async compareETFs(tickers, period = '1y') {
     const res = await request(
       `/market/compare?tickers=${encodeURIComponent(tickers)}&period=${period}`
+    )
+    return res.json()
+  },
+
+  async getQuote(ticker, period = '1mo') {
+    const res = await request(
+      `/market/quote?ticker=${encodeURIComponent(ticker)}&period=${period}`
     )
     return res.json()
   },

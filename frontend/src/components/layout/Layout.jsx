@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
   Upload, Home, Clock, X, DollarSign, TrendingUp, BookOpen, Calculator,
   Menu, ChevronRight, GitCompare, User, UserPlus, LogOut, LogIn,
-  ShieldQuestion, Layers, ChevronsLeft, ChevronsRight,
+  ShieldQuestion, Layers, ChevronsLeft, ChevronsRight, Search,
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useSavedSessions } from '../../hooks/useSession'
@@ -30,13 +30,22 @@ const NAV_GROUPS = [
     items: [
       { to: '/etf-explorer',      label: 'ETF Explorer', icon: TrendingUp },
       { to: '/etf-compare',       label: 'ETF Compare',  icon: GitCompare },
+      { to: '/lookup',            label: 'Stock Lookup', icon: Search },
       { to: '/etf-guide',         label: 'ETF Guide',    icon: BookOpen },
       { to: '/growth-calculator', label: 'Growth Calc',  icon: Calculator },
     ],
   },
 ]
 
-const FLAT_NAV = NAV_GROUPS.flatMap((g) => g.items)
+// Curated (not sliced) — the bottom tab bar only has room for ~5 icons, so
+// pick the most-used destinations explicitly and put everything else behind
+// "More" rather than silently truncating NAV_GROUPS as it grows.
+const MOBILE_NAV = [
+  { to: '/',                 label: 'Home',   icon: Home },
+  { to: '/upload',           label: 'Upload', icon: Upload },
+  { to: '/risk-assessment',  label: 'Risk',   icon: ShieldQuestion },
+  { to: '/model-portfolios', label: 'Models', icon: Layers },
+]
 const SIDEBAR_COLLAPSED_KEY = 'folio_sidebar_collapsed'
 
 function fmtCurrency(v) {
@@ -370,7 +379,7 @@ export default function Layout() {
 
       {/* ── Mobile bottom tab bar ── */}
       <nav aria-label="Quick navigation" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 flex items-center justify-around px-2 py-2">
-        {FLAT_NAV.slice(0, 5).map(({ to, label, icon: Icon }) => (
+        {MOBILE_NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to} to={to} end={to === '/'}
             className={({ isActive }) =>
@@ -383,6 +392,14 @@ export default function Layout() {
             <span className="text-xs">{label.split(' ')[0]}</span>
           </NavLink>
         ))}
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          aria-label="More navigation options"
+          className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-md text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-xs">More</span>
+        </button>
       </nav>
 
       {/* ── Main content ── */}

@@ -10,6 +10,8 @@ block server IPs; Yahoo is kept as a fallback via a direct httpx call to its
 chart API (bypassing the yfinance package's crumb/cookie requirement).
 """
 import logging
+import threading
+import time
 from datetime import datetime, timezone, timedelta
 
 import httpx
@@ -17,8 +19,9 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-VALID_PERIODS = {"1mo", "3mo", "6mo", "1y", "2y", "3y", "5y"}
+VALID_PERIODS = {"5d", "1mo", "3mo", "6mo", "1y", "2y", "3y", "5y"}
 PERIOD_DAYS = {
+    "5d": 10,
     "1mo": 35,
     "3mo": 95,
     "6mo": 185,
@@ -27,6 +30,8 @@ PERIOD_DAYS = {
     "3y": 1100,
     "5y": 1830,
 }
+
+_SOURCE_TIMEOUT = 8.0  # seconds, per source — see fetch_closes() for why this matters
 
 # Browser-like headers for the Yahoo Finance fallback.
 _YF_HEADERS = {
@@ -66,7 +71,7 @@ def fetch_stooq_closes(ticker: str, days: int) -> "pd.Series | None":
     try:
         resp = httpx.get(
             url,
-            timeout=20.0,
+            timeout=_SOURCE_TIMEOUT,
             follow_redirects=True,
             headers={"User-Agent": "Mozilla/5.0 (compatible; bot)"},
         )
@@ -131,7 +136,7 @@ def fetch_yahoo_closes(ticker: str, days: int) -> "pd.Series | None":
     try:
         resp = httpx.get(
             url, params=params, headers=_YF_HEADERS,
-            timeout=20.0, follow_redirects=True,
+            timeout=_SOURCE_TIMEOUT, follow_redirects=True,
         )
         resp.raise_for_status()
         body = resp.json()
@@ -166,14 +171,98 @@ def fetch_yahoo_closes(ticker: str, days: int) -> "pd.Series | None":
         return None
 
 
-def fetch_closes(ticker: str, days: int) -> "pd.Series | None":
-    """Primary: Stooq -> Fallback: Yahoo Finance. Returns pd.Series or None."""
-    result = fetch_stooq_closes(ticker, days)
-    if result is not None and not result.empty:
-        return result
+def fetch_intraday_closes(ticker: str, interval: str = "5m") -> "pd.Series | None":
+    """Today's intraday price series from Yahoo's chart API. Stooq's free
+    endpoint is daily-close-only, so there is no Stooq fallback here. Not
+    cached (prices move through the trading day) and not retried — callers
+    should treat a None/empty result as "try a longer period" rather than
+    an error, since this is commonly empty outside market hours."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+    params = {"range": "1d", "interval": interval, "includePrePost": "false"}
+    try:
+        resp = httpx.get(
+            url, params=params, headers=_YF_HEADERS,
+            timeout=_SOURCE_TIMEOUT, follow_redirects=True,
+        )
+        resp.raise_for_status()
+        body = resp.json()
 
-    logger.info(f"price_fetch: stooq failed for {ticker}, trying Yahoo Finance")
-    return fetch_yahoo_closes(ticker, days)
+        results = (body.get("chart") or {}).get("result") or []
+        if not results:
+            return None
+
+        r = results[0]
+        timestamps = r.get("timestamp") or []
+        closes = ((r.get("indicators") or {}).get("quote") or [{}])[0].get("close") or []
+        if not timestamps or not closes or len(timestamps) != len(closes):
+            return None
+
+        idx = pd.DatetimeIndex([datetime.fromtimestamp(ts, tz=timezone.utc) for ts in timestamps])
+        s = pd.Series(closes, index=idx, name=ticker, dtype=float)
+        s = s.dropna()
+        return s if not s.empty else None
+
+    except httpx.HTTPStatusError as exc:
+        logger.warning(f"yahoo intraday: HTTP {exc.response.status_code} for {ticker}")
+        return None
+    except Exception as exc:
+        logger.warning(f"yahoo intraday: fetch failed for {ticker}: {exc}")
+        return None
+
+
+# ── In-process cache + Stooq/Yahoo race ─────────────────────────────────────
+#
+# Previously Stooq and Yahoo were tried sequentially (Stooq, then Yahoo on
+# failure). On Railway, Stooq has been observed to reliably stall for its
+# full timeout before Yahoo succeeds, so a single cache-miss request could
+# take ~2x the per-source timeout (40s+ at the old 20s timeout) — long
+# enough that it read as "stuck forever" in the UI. Racing both sources
+# concurrently and caching the winner bounds a cache-miss to roughly one
+# timeout, and makes repeat lookups (e.g. the same popular ETF tickers)
+# effectively instant.
+_CACHE_TTL_SECONDS = 600  # 10 minutes
+_cache: dict[tuple[str, int], tuple[float, "pd.Series"]] = {}
+_cache_lock = threading.Lock()
+
+
+def fetch_closes(ticker: str, days: int) -> "pd.Series | None":
+    """Stooq and Yahoo raced concurrently; first usable result wins and is
+    cached in-process for a few minutes. Returns pd.Series or None."""
+    cache_key = (ticker, days)
+    now = time.monotonic()
+    with _cache_lock:
+        cached = _cache.get(cache_key)
+    if cached is not None and (now - cached[0]) < _CACHE_TTL_SECONDS:
+        return cached[1]
+
+    import concurrent.futures
+
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+    result = None
+    try:
+        futures = {
+            pool.submit(fetch_stooq_closes, ticker, days): "stooq",
+            pool.submit(fetch_yahoo_closes, ticker, days): "yahoo",
+        }
+        for fut in concurrent.futures.as_completed(futures, timeout=_SOURCE_TIMEOUT + 2):
+            try:
+                s = fut.result()
+            except Exception:
+                s = None
+            if s is not None and not s.empty:
+                result = s
+                break
+    except concurrent.futures.TimeoutError:
+        pass
+    finally:
+        # Don't block the caller on whichever source didn't win — let it
+        # finish in the background and get discarded.
+        pool.shutdown(wait=False)
+
+    if result is not None:
+        with _cache_lock:
+            _cache[cache_key] = (now, result)
+    return result
 
 
 def fetch_closes_for_period(ticker: str, period: str) -> "pd.Series | None":
